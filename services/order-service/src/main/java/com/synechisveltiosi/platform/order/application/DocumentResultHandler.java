@@ -1,16 +1,19 @@
 package com.synechisveltiosi.platform.order.application;
 
 import com.synechisveltiosi.platform.eventcontracts.Events;
-import com.synechisveltiosi.platform.order.adapter.persistence.*;
+import com.synechisveltiosi.platform.order.adapter.persistence.InboxStore;
+import com.synechisveltiosi.platform.order.adapter.persistence.OrderDocumentRepository;
+import com.synechisveltiosi.platform.order.adapter.persistence.OrderJournal;
+import com.synechisveltiosi.platform.order.adapter.persistence.OrderRepository;
 import com.synechisveltiosi.platform.order.config.MessagingProperties;
 import com.synechisveltiosi.platform.order.domain.GcsObjectReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 
 @Service
 public class DocumentResultHandler {
-    public enum Outcome { APPLIED, DUPLICATE, STALE }
     private final InboxStore inbox;
     private final OrderRepository orders;
     private final OrderDocumentRepository documents;
@@ -18,10 +21,15 @@ public class DocumentResultHandler {
     private final MessagingProperties settings;
     private final Clock clock;
     public DocumentResultHandler(InboxStore inbox, OrderRepository orders, OrderDocumentRepository documents,
-            OrderJournal journal, MessagingProperties settings, Clock clock) {
-        this.inbox = inbox; this.orders = orders; this.documents = documents; this.journal = journal;
-        this.settings = settings; this.clock = clock;
+                                 OrderJournal journal, MessagingProperties settings, Clock clock) {
+        this.inbox = inbox;
+        this.orders = orders;
+        this.documents = documents;
+        this.journal = journal;
+        this.settings = settings;
+        this.clock = clock;
     }
+
     @Transactional(timeout = 10)
     public Outcome handle(Events.Envelope event) {
         if (!(event.data() instanceof Events.DocumentResult result) || !"document-service".equals(event.source()))
@@ -34,7 +42,8 @@ public class DocumentResultHandler {
         var document = documents.findByTenantIdAndOrderIdAndId(event.tenantId(), event.aggregateId(), result.documentId())
                 .orElseThrow(ApiFailure::notFound);
         if (!result.processingRequestId().equals(document.processingRequestId())) return Outcome.STALE;
-        if (!result.processorVersion().equals(document.processorVersion())) throw new IllegalArgumentException("Processor version mismatch");
+        if (!result.processorVersion().equals(document.processorVersion()))
+            throw new IllegalArgumentException("Processor version mismatch");
         var report = new GcsObjectReference(result.reportBucket(), result.reportObjectName(), Long.parseLong(result.reportGeneration()));
         var now = clock.instant();
         if (now.isBefore(document.updatedAt())) now = document.updatedAt();
@@ -44,4 +53,6 @@ public class DocumentResultHandler {
         journal.flush();
         return applied ? Outcome.APPLIED : Outcome.STALE;
     }
+
+    public enum Outcome {APPLIED, DUPLICATE, STALE}
 }

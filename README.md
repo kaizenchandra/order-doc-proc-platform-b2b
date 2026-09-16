@@ -2,7 +2,9 @@
 
 Java 21 / Spring Boot 4.1.1 / Spring Framework 7, built incrementally as a production architecture exercise.
 
-**Current milestone: Phase 4 — order-service workflows and HTTP API.** Order-service exposes authenticated order/document endpoints with transactional outbox writes. Real GCS operations, event publication, and document processing arrive in later phases. Infrastructure directories are reserved structure, not deployment-ready resources.
+**Current milestone: Phase 4 — order-service workflows and HTTP API.** Order-service exposes authenticated
+order/document endpoints with transactional outbox writes. Real GCS operations, event publication, and document
+processing arrive in later phases. Infrastructure directories are reserved structure, not deployment-ready resources.
 
 ## Build
 
@@ -19,9 +21,11 @@ On macOS, if `JAVA_HOME` is invalid, scope the correction to the command:
 JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./mvnw -B -ntp verify
 ```
 
-Import the root `pom.xml` in IntelliJ. Do not import the five child POMs as unrelated projects. Configure the project SDK and Maven runner to JDK 21.
+Import the root `pom.xml` in IntelliJ. Do not import the five child POMs as unrelated projects. Configure the project
+SDK and Maven runner to JDK 21.
 
-Surefire runs `*Test` / `*Tests`; Failsafe runs `*IT` / `*ITCase` during `verify`. PostgreSQL integration tests now require a running Docker engine. No cloud credentials are needed for this milestone.
+Surefire runs `*Test` / `*Tests`; Failsafe runs `*IT` / `*ITCase` during `verify`. PostgreSQL integration tests now
+require a running Docker engine. No cloud credentials are needed for this milestone.
 
 ## Repository
 
@@ -53,7 +57,8 @@ Surefire runs `*Test` / `*Tests`; Failsafe runs `*IT` / `*ITCase` during `verify
 └── .github/workflows/              # CI/CD in Phase 16
 ```
 
-Dockerfiles, Compose, Helm templates, Terraform resources, CI workflows, and environment-specific application profiles will be added in their designated phases; empty runnable-looking configuration is intentionally avoided.
+Dockerfiles, Compose, Helm templates, Terraform resources, CI workflows, and environment-specific application profiles
+will be added in their designated phases; empty runnable-looking configuration is intentionally avoided.
 
 ## Design and progress
 
@@ -65,4 +70,5 @@ Dockerfiles, Compose, Helm templates, Terraform resources, CI workflows, and env
 - [Phase roadmap](docs/roadmap.md)
 - [Infrastructure ownership](infrastructure/README.md)
 
-Never commit service-account keys, real credentials, signed URLs, or Terraform state. Git ignore rules reduce accidents but are not a secret scanner.
+Never commit service-account keys, real credentials, signed URLs, or Terraform state. Git ignore rules reduce accidents
+but are not a secret scanner.

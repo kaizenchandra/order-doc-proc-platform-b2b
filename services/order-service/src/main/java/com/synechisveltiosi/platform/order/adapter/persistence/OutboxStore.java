@@ -7,24 +7,22 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import java.time.Instant;
 
 @Repository
 @Transactional(propagation = Propagation.REQUIRES_NEW, timeout = 5)
 public class OutboxStore {
     private final JdbcTemplate jdbc;
     private final MessagingProperties settings;
-    public OutboxStore(JdbcTemplate jdbc, MessagingProperties settings) { this.jdbc = jdbc; this.settings = settings; }
-    public record Lease(UUID eventId, UUID token, int attempt, String destination, String eventType, int eventVersion,
-            UUID tenantId, UUID aggregateId, UUID correlationId, UUID causationId, Instant occurredAt,
-            String source, String data, String traceparent) {
-        public Events.Envelope envelope(EventCodec codec) {
-            return new Events.Envelope(eventId, eventType, eventVersion, tenantId, aggregateId, correlationId,
-                    causationId, occurredAt, source, codec.payload(eventType, data));
-        }
+
+    public OutboxStore(JdbcTemplate jdbc, MessagingProperties settings) {
+        this.jdbc = jdbc;
+        this.settings = settings;
     }
+
     public Optional<Lease> claim() {
         var rows = jdbc.query("""
                 WITH candidate AS (
@@ -43,6 +41,7 @@ public class OutboxStore {
                 rs.getString("data"), rs.getString("traceparent")), UUID.randomUUID(), settings.leaseSeconds());
         return rows.stream().findFirst();
     }
+
     public boolean published(Lease lease) {
         return jdbc.update("""
                 UPDATE outbox_events SET published_at = clock_timestamp(), claim_token = NULL, lease_until = NULL,
@@ -50,12 +49,23 @@ public class OutboxStore {
                     AND lease_until > clock_timestamp()
                 """, lease.eventId(), lease.token()) == 1;
     }
+
     public boolean retry(Lease lease, int delaySeconds, String errorCode) {
-        if (delaySeconds < 1 || delaySeconds > 300 || !errorCode.matches("[A-Z_]{1,100}")) throw new IllegalArgumentException("Invalid retry");
+        if (delaySeconds < 1 || delaySeconds > 300 || !errorCode.matches("[A-Z_]{1,100}"))
+            throw new IllegalArgumentException("Invalid retry");
         return jdbc.update("""
                 UPDATE outbox_events SET available_at = clock_timestamp() + (? * interval '1 second'),
                     claim_token = NULL, lease_until = NULL, last_error_code = ?
                 WHERE event_id = ? AND claim_token = ? AND published_at IS NULL AND lease_until > clock_timestamp()
                 """, delaySeconds, errorCode, lease.eventId(), lease.token()) == 1;
+    }
+
+    public record Lease(UUID eventId, UUID token, int attempt, String destination, String eventType, int eventVersion,
+                        UUID tenantId, UUID aggregateId, UUID correlationId, UUID causationId, Instant occurredAt,
+                        String source, String data, String traceparent) {
+        public Events.Envelope envelope(EventCodec codec) {
+            return new Events.Envelope(eventId, eventType, eventVersion, tenantId, aggregateId, correlationId,
+                    causationId, occurredAt, source, codec.payload(eventType, data));
+        }
     }
 }

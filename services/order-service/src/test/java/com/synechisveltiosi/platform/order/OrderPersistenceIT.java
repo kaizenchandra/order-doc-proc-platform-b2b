@@ -14,15 +14,18 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class OrderPersistenceIT {
+    private static final Instant NOW = Instant.parse("2026-09-15T00:00:00Z");
     private static PostgreSQLContainer database;
     private static ConfigurableApplicationContext context;
     private static TransactionTemplate tx;
@@ -31,9 +34,9 @@ class OrderPersistenceIT {
     private static OrderJournal journal;
     private static InboxStore inbox;
     private static JdbcTemplate jdbc;
-    private static final Instant NOW = Instant.parse("2026-09-15T00:00:00Z");
 
-    @BeforeAll static void start() {
+    @BeforeAll
+    static void start() {
         // Explicit lifecycle preserves JUnit 5 without Spring 7's JUnit 6 extension.
         database = new PostgreSQLContainer("postgres:17.6")
                 .withDatabaseName("orders").withUsername("order_test").withPassword(UUID.randomUUID().toString());
@@ -54,27 +57,37 @@ class OrderPersistenceIT {
             throw failure;
         }
     }
-    @AfterAll static void stop() {
-        try { if (context != null) context.close(); }
-        finally { if (database != null) database.close(); }
+
+    @AfterAll
+    static void stop() {
+        try {
+            if (context != null) context.close();
+        } finally {
+            if (database != null) database.close();
+        }
     }
+
     private Order newOrder() {
         return Order.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "PO-1", new BigDecimal("49.95"), "USD", NOW);
     }
+
     private OutboxEvent event(Order order, String data) {
         return new OutboxEvent(UUID.randomUUID(), order.tenantId(), order.id(), "OrderCreated", 1,
                 UUID.randomUUID(), null, NOW, "order-service", "order-events", data, null);
     }
+
     private long eventCount(UUID aggregateId) {
         return jdbc.queryForObject("select count(*) from outbox_events where aggregate_id = ?", Long.class, aggregateId);
     }
 
-    @Test void migrationAndHibernateValidationRunBeforeRepositoryUse() {
+    @Test
+    void migrationAndHibernateValidationRunBeforeRepositoryUse() {
         assertEquals(1, jdbc.queryForObject("select count(*) from flyway_schema_history where success and version = '1'", Integer.class));
         assertEquals("order-service", context.getEnvironment().getProperty("spring.application.name"));
     }
 
-    @Test void orderOutboxAndIdempotencyCommitTogetherAndJsonStaysAnObject() {
+    @Test
+    void orderOutboxAndIdempotencyCommitTogetherAndJsonStaysAnObject() {
         var order = newOrder();
         var key = new IdempotencyId(order.tenantId(), "POST:/api/v1/orders", UUID.randomUUID().toString());
         tx.executeWithoutResult(status -> {
@@ -90,7 +103,8 @@ class OrderPersistenceIT {
         assertEquals(order.id(), journal.find(key).orElseThrow().resourceId());
     }
 
-    @Test void invalidOutboxDataRollsBackTheOrder() {
+    @Test
+    void invalidOutboxDataRollsBackTheOrder() {
         var order = newOrder();
         assertThrows(DataIntegrityViolationException.class, () -> tx.executeWithoutResult(status -> {
             orders.save(order);
@@ -100,7 +114,8 @@ class OrderPersistenceIT {
         assertEquals(0, eventCount(order.id()));
     }
 
-    @Test void tenantForeignKeyAndDocumentStateAreEnforcedByPostgres() {
+    @Test
+    void tenantForeignKeyAndDocumentStateAreEnforcedByPostgres() {
         var order = newOrder();
         tx.executeWithoutResult(status -> orders.save(order));
         var doc = OrderDocument.register(UUID.randomUUID(), UUID.randomUUID(), order.id(), "invoice.pdf",
@@ -115,12 +130,16 @@ class OrderPersistenceIT {
                 documents.findByTenantIdAndOrderIdAndId(order.tenantId(), order.id(), valid.id()).orElseThrow().status());
     }
 
-    @Test void documentResultSurvivesJpaRoundTrip() {
+    @Test
+    void documentResultSurvivesJpaRoundTrip() {
         var order = newOrder();
         var doc = OrderDocument.register(UUID.randomUUID(), order.tenantId(), order.id(), "invoice.pdf",
                 "application/pdf", "uploads", UUID.randomUUID().toString(), NOW.plusSeconds(600), NOW);
         var request = UUID.randomUUID();
-        tx.executeWithoutResult(status -> { orders.save(order); documents.save(doc); });
+        tx.executeWithoutResult(status -> {
+            orders.save(order);
+            documents.save(doc);
+        });
         tx.executeWithoutResult(status -> {
             var managed = documents.findByTenantIdAndOrderIdAndId(order.tenantId(), order.id(), doc.id()).orElseThrow();
             managed.queue(new VerifiedUpload(new GcsObjectReference(managed.bucket(), managed.objectName(), 42), 100), request, "1", NOW);
@@ -136,7 +155,8 @@ class OrderPersistenceIT {
         assertEquals(2L, result.version());
     }
 
-    @Test void staleWriterCannotUndoAnotherCommittedTransition() {
+    @Test
+    void staleWriterCannotUndoAnotherCommittedTransition() {
         var order = newOrder();
         tx.executeWithoutResult(status -> orders.save(order));
         var first = orders.findByTenantIdAndId(order.tenantId(), order.id()).orElseThrow();
@@ -148,7 +168,8 @@ class OrderPersistenceIT {
         assertEquals(OrderStatus.CONFIRMED, orders.findByTenantIdAndId(order.tenantId(), order.id()).orElseThrow().status());
     }
 
-    @Test void inboxRollbackAllowsRedeliveryAndRollsBackBusinessState() {
+    @Test
+    void inboxRollbackAllowsRedeliveryAndRollsBackBusinessState() {
         var eventId = UUID.randomUUID();
         var order = newOrder();
         tx.executeWithoutResult(status -> orders.save(order));
@@ -163,7 +184,8 @@ class OrderPersistenceIT {
         assertEquals(Boolean.TRUE, tx.execute(status -> inbox.claim("another-consumer", eventId)));
     }
 
-    @Test void concurrentInboxClaimsHaveOneWinner() throws Exception {
+    @Test
+    void concurrentInboxClaimsHaveOneWinner() throws Exception {
         var eventId = UUID.randomUUID();
         var claimed = new CountDownLatch(1);
         var secondStarted = new CountDownLatch(1);
@@ -171,8 +193,13 @@ class OrderPersistenceIT {
             var first = executor.submit(() -> tx.execute(status -> {
                 boolean won = inbox.claim("concurrent", eventId);
                 claimed.countDown();
-                try { if (!secondStarted.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("second worker missing"); }
-                catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IllegalStateException(e); }
+                try {
+                    if (!secondStarted.await(5, TimeUnit.SECONDS))
+                        throw new IllegalStateException("second worker missing");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
                 return won;
             }));
             assertTrue(claimed.await(5, TimeUnit.SECONDS));
@@ -185,14 +212,16 @@ class OrderPersistenceIT {
         }
     }
 
-    @Test void journalAndInboxCannotCommitInAnAccidentalIndependentTransaction() {
+    @Test
+    void journalAndInboxCannotCommitInAnAccidentalIndependentTransaction() {
         assertThrows(org.springframework.transaction.IllegalTransactionStateException.class,
                 () -> inbox.claim("order-results", UUID.randomUUID()));
         assertThrows(org.springframework.transaction.IllegalTransactionStateException.class,
                 () -> journal.append(event(newOrder(), "{}")));
     }
 
-    @Test void idempotencyKeyIsUniquePerTenantAndOperation() {
+    @Test
+    void idempotencyKeyIsUniquePerTenantAndOperation() {
         UUID tenant = UUID.randomUUID();
         String key = UUID.randomUUID().toString();
         var id = new IdempotencyId(tenant, "POST:/api/v1/orders", key);

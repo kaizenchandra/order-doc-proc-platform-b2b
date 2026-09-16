@@ -4,19 +4,27 @@ import com.synechisveltiosi.platform.order.adapter.persistence.OutboxStore;
 import com.synechisveltiosi.platform.order.config.MessagingProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Claims one fresh lease per publish, avoiding a waiting batch whose leases expire before use. */
+/**
+ * Claims one fresh lease per publish, avoiding a waiting batch whose leases expire before use.
+ */
 public class OutboxRelay {
     private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
     private final OutboxStore store;
     private final EventCodec codec;
     private final EventPublisher publisher;
     private final MessagingProperties settings;
+
     public OutboxRelay(OutboxStore store, EventCodec codec, EventPublisher publisher, MessagingProperties settings) {
-        this.store = store; this.codec = codec; this.publisher = publisher; this.settings = settings;
+        this.store = store;
+        this.codec = codec;
+        this.publisher = publisher;
+        this.settings = settings;
     }
+
     public int poll() {
         int attempted = 0;
         while (attempted < settings.maxPerPoll() && !Thread.currentThread().isInterrupted()) {
@@ -39,7 +47,10 @@ public class OutboxRelay {
                 int cap = Math.min(300, 1 << Math.min(lease.attempt(), 9));
                 store.retry(lease, ThreadLocalRandom.current().nextInt(Math.max(1, cap / 2), cap + 1),
                         failure instanceof IllegalArgumentException ? "INVALID_EVENT" : "PUBLISH_FAILED");
-                if (failure instanceof InterruptedException) { Thread.currentThread().interrupt(); break; }
+                if (failure instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
                 log.warn("Outbox publication failed; eventId={}, attempt={}", lease.eventId(), lease.attempt());
                 continue;
             }

@@ -2,8 +2,11 @@ package com.synechisveltiosi.platform.order.adapter.messaging;
 
 import com.synechisveltiosi.platform.eventcontracts.Events;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.*;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -14,11 +17,13 @@ public class EventCodec {
     private final ObjectMapper json = JsonMapper.builder().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .enable(tools.jackson.core.StreamReadFeature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
+
     public byte[] encode(Events.Envelope event) {
         byte[] bytes = json.writeValueAsBytes(event);
         if (bytes.length > MAX_BYTES) throw new IllegalArgumentException("Event exceeds size limit");
         return bytes;
     }
+
     public Events.Envelope decode(byte[] bytes) {
         if (bytes.length == 0 || bytes.length > MAX_BYTES) throw new IllegalArgumentException("Invalid event size");
         JsonNode root = json.readTree(bytes);
@@ -30,7 +35,11 @@ public class EventCodec {
                 uuid(root, "correlationId"), root.path("causationId").isMissingNode() || root.path("causationId").isNull() ? null : uuid(root, "causationId"),
                 Instant.parse(text(root, "occurredAt")), text(root, "source"), data);
     }
-    public Events.Data payload(String type, String data) { return payload(type, json.readTree(data)); }
+
+    public Events.Data payload(String type, String data) {
+        return payload(type, json.readTree(data));
+    }
+
     private Events.Data payload(String type, JsonNode data) {
         if (!data.isObject()) throw new IllegalArgumentException("Event data must be an object");
         Class<? extends Events.Data> target = switch (type) {
@@ -42,10 +51,12 @@ public class EventCodec {
         };
         return json.treeToValue(data, target);
     }
+
     private String text(JsonNode root, String field) {
         if (!root.path(field).isString()) throw new IllegalArgumentException("Missing event field");
         return root.path(field).asText();
     }
+
     private UUID uuid(JsonNode root, String field) {
         String value = text(root, field);
         UUID id = UUID.fromString(value);

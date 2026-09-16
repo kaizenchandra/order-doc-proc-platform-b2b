@@ -4,13 +4,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.Objects;
 import java.util.UUID;
 
 @Repository
 public class InboxStore {
     private final JdbcTemplate jdbc;
-    public InboxStore(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+
+    public InboxStore(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
 
     // Mandatory: an inbox claim must never commit before its business effect.
     // ON CONFLICT resolves concurrent duplicate delivery without aborting PostgreSQL's transaction.

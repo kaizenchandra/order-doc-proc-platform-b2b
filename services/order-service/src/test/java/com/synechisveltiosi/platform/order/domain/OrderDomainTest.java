@@ -1,32 +1,39 @@
 package com.synechisveltiosi.platform.order.domain;
 
 import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class OrderDomainTest {
     private static final Instant NOW = Instant.parse("2026-09-15T00:00:00Z");
+
     private Order order(BigDecimal amount) {
         return Order.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "PO-123", amount, "INR", NOW);
     }
+
     private OrderDocument document() {
         return OrderDocument.register(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "invoice.pdf",
                 "application/pdf", "uploads", "tenant/order/document", NOW.plusSeconds(600), NOW);
     }
+
     private VerifiedUpload upload() {
         return new VerifiedUpload(new GcsObjectReference("uploads", "tenant/order/document", 7), 512);
     }
 
-    @Test void moneyIsExactAndNeverSilentlyRounded() {
+    @Test
+    void moneyIsExactAndNeverSilentlyRounded() {
         assertEquals(new BigDecimal("100.00"), order(new BigDecimal("100")).totalAmount());
         assertThrows(ArithmeticException.class, () -> order(new BigDecimal("100.001")));
         assertThrows(IllegalArgumentException.class, () -> order(BigDecimal.ZERO));
         assertThrows(IllegalArgumentException.class, () -> order(new BigDecimal("100000000000000000.00")));
     }
 
-    @Test void terminalOrdersCannotBeReopened() {
+    @Test
+    void terminalOrdersCannotBeReopened() {
         var order = order(BigDecimal.TEN);
         assertThrows(IllegalStateException.class, () -> order.transitionTo(OrderStatus.FULFILLED, NOW));
         assertTrue(order.transitionTo(OrderStatus.CONFIRMED, NOW));
@@ -35,7 +42,8 @@ class OrderDomainTest {
         assertThrows(IllegalStateException.class, () -> order.transitionTo(OrderStatus.CANCELLED, NOW));
     }
 
-    @Test void uploadMustMatchRegistrationAndBeWithinItsWindow() {
+    @Test
+    void uploadMustMatchRegistrationAndBeWithinItsWindow() {
         var doc = document();
         var wrong = new VerifiedUpload(new GcsObjectReference("uploads", "someone-elses-file", 7), 512);
         assertThrows(IllegalArgumentException.class, () -> doc.queue(wrong, UUID.randomUUID(), "1", NOW));
@@ -45,7 +53,8 @@ class OrderDomainTest {
         assertEquals(DocumentStatus.EXPIRED, doc.status());
     }
 
-    @Test void staleResultsCannotOverwriteReprocessingAndTerminalResultsAreStable() {
+    @Test
+    void staleResultsCannotOverwriteReprocessingAndTerminalResultsAreStable() {
         var doc = document();
         var oldRequest = UUID.randomUUID();
         var newRequest = UUID.randomUUID();
@@ -63,7 +72,8 @@ class OrderDomainTest {
         assertEquals(DocumentStatus.PROCESSED, doc.status());
     }
 
-    @Test void invalidResultCannotPartiallyMutateTheDocument() {
+    @Test
+    void invalidResultCannotPartiallyMutateTheDocument() {
         var doc = document();
         var request = UUID.randomUUID();
         doc.queue(upload(), request, "1", NOW);

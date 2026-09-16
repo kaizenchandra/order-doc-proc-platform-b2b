@@ -1,6 +1,8 @@
 package com.synechisveltiosi.platform.order.domain;
 
-/** Exact immutable generation; never a signed URL or a client-selected bucket. */
+/**
+ * Exact immutable generation; never a signed URL or a client-selected bucket.
+ */
 public record GcsObjectReference(String bucket, String objectName, long generation) {
     public GcsObjectReference {
         DomainChecks.text(bucket, 222, "bucket");

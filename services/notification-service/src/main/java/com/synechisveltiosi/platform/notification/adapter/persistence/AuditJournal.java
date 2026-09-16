@@ -8,7 +8,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public class AuditJournal {
     private final EntityManager entityManager;
-    public AuditJournal(EntityManager entityManager) { this.entityManager = entityManager; }
+
+    public AuditJournal(EntityManager entityManager) {
+        this.entityManager = entityManager;
+    }
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void append(AuditRecord audit, NotificationRecord notification) {

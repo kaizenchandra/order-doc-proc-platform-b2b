@@ -10,18 +10,27 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.core.*;
-import org.springframework.security.oauth2.jwt.*;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+
 import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class ApiSecurity {
-    @Bean JwtDecoder jwtDecoder(@Value("${app.security.issuer}") String issuer,
-            @Value("${app.security.jwk-set-uri}") String jwks,
-            @Value("${app.security.audience}") String audience) {
-        if (issuer.isBlank() || jwks.isBlank() || audience.isBlank()) throw new IllegalArgumentException("JWT configuration is required");
+    @Bean
+    JwtDecoder jwtDecoder(@Value("${app.security.issuer}") String issuer,
+                          @Value("${app.security.jwk-set-uri}") String jwks,
+                          @Value("${app.security.audience}") String audience) {
+        if (issuer.isBlank() || jwks.isBlank() || audience.isBlank())
+            throw new IllegalArgumentException("JWT configuration is required");
         var decoder = NimbusJwtDecoder.withJwkSetUri(jwks).build();
         OAuth2TokenValidator<Jwt> claims = jwt -> {
             try {
@@ -37,7 +46,9 @@ public class ApiSecurity {
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(issuer), claims));
         return decoder;
     }
-    @Bean SecurityFilterChain orderSecurityFilterChain(HttpSecurity http) throws Exception {
+
+    @Bean
+    SecurityFilterChain orderSecurityFilterChain(HttpSecurity http) throws Exception {
         // Bearer tokens only; no cookie/session authentication, so CSRF tokens are not used.
         http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

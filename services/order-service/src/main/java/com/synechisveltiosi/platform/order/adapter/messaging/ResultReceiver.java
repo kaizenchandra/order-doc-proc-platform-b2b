@@ -8,18 +8,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class ResultReceiver {
     private static final Logger log = LoggerFactory.getLogger(ResultReceiver.class);
-    public interface Acknowledgement { void ack(); void nack(); }
     private final EventCodec codec;
     private final DocumentResultHandler handler;
-    public ResultReceiver(EventCodec codec, DocumentResultHandler handler) { this.codec = codec; this.handler = handler; }
+    public ResultReceiver(EventCodec codec, DocumentResultHandler handler) {
+        this.codec = codec;
+        this.handler = handler;
+    }
+
     public void receive(byte[] bytes, Acknowledgement acknowledgement) {
         receive(bytes, java.util.Map.of(), acknowledgement);
     }
+
     public void receive(byte[] bytes, java.util.Map<String, String> attributes, Acknowledgement acknowledgement) {
         try (var ignored = com.synechisveltiosi.platform.commonobservability.TraceContext.open(attributes.get("traceparent"))) {
             handler.handle(codec.decode(bytes));
-        }
-        catch (RuntimeException failure) {
+        } catch (RuntimeException failure) {
             // No ACK for malformed/unsupported events: subscription retry/DLQ policy owns bounded delivery.
             log.warn("Result rejected or transaction failed; failureType={}", failure.getClass().getSimpleName());
             acknowledgement.nack();
@@ -27,5 +30,11 @@ public class ResultReceiver {
         }
         // The transactional proxy has committed before this point. ACK failure permits harmless redelivery.
         acknowledgement.ack();
+    }
+
+    public interface Acknowledgement {
+        void ack();
+
+        void nack();
     }
 }
