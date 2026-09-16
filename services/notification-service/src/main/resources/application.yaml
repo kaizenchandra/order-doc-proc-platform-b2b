@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: notification-service
+  datasource:
+    # No embedded database or local credentials as a production fallback.
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      minimum-idle: 0
+      connection-timeout: 3000
+      validation-timeout: 1000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    # Production will run migrations with a separate deployment identity.
+    enabled: ${DB_MIGRATIONS_ENABLED:true}
+    clean-disabled: true
+    validate-on-migrate: true
+  sql:
+    init:
+      mode: never
