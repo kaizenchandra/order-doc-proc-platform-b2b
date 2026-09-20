@@ -46,4 +46,12 @@ public class DocumentWorkflows {
             throw new ApiFailure(502, "Document storage returned inconsistent metadata");
         return orders.complete(tenant, order, id, upload, correlation);
     }
+
+    public DocumentStorage.DownloadAuthorization report(UUID tenant, UUID order, UUID id) {
+        var document = orders.document(tenant, order, id);
+        if (document.status() != DocumentStatus.PROCESSED && document.status() != DocumentStatus.FAILED)
+            throw ApiFailure.conflict("A processing report is not available");
+        return storage.authorizeDownload(new com.synechisveltiosi.platform.order.domain.GcsObjectReference(
+                document.reportBucket(), document.reportObjectName(), document.reportGeneration()), clock.instant().plusSeconds(300));
+    }
 }

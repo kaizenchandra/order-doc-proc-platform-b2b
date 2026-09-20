@@ -39,8 +39,9 @@ flowchart LR
   a new processingRequestId. No potentially stale PROCESSING state initially.
 - SQL mutation plus outbox row commit together. Relay claims short leases, publishes outside the SQL transaction, and
   marks publication with a claim token. Duplicate publication reuses eventId.
-- The processor writes a create-only canonical GCS result keyed by processingRequestId, then publishes its stored stable
-  result event before acknowledging. Concurrent workers reuse the winning result. Transient failures cause redelivery;
+- The processor writes a create-only canonical GCS result keyed by processingRequestId, then publishes a stable result
+  event reconstructed from stored metadata and the report object's generation before acknowledging. Concurrent workers
+  reuse the winning result. Transient failures cause redelivery;
   invalid document bytes produce durable terminal failure results.
 - SQL consumers atomically insert unique (consumerName,eventId) plus business effect, then ACK. Stale
   processingRequestId results cannot overwrite current state.

@@ -1,3 +1,20 @@
 spring:
   application:
     name: document-service
+
+app:
+  push:
+    issuer: ${PUSH_ISSUER:https://accounts.google.com}
+    jwk-set-uri: ${PUSH_JWK_SET_URI:https://www.googleapis.com/oauth2/v3/certs}
+    audience: ${PUSH_AUDIENCE:}
+    service-account-email: ${PUSH_SERVICE_ACCOUNT_EMAIL:}
+    subscription: ${DOCUMENT_REQUESTS_SUBSCRIPTION:}
+  storage:
+    enabled: ${STORAGE_ENABLED:false}
+    upload-bucket: ${UPLOAD_BUCKET:}
+    report-bucket: ${REPORT_BUCKET:}
+  messaging:
+    enabled: ${MESSAGING_ENABLED:false}
+    project-id: ${PUBSUB_PROJECT_ID:}
+    results-topic: ${DOCUMENT_RESULTS_TOPIC:document-results}
+    emulator-host: ${PUBSUB_EMULATOR_HOST:}

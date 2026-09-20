@@ -329,11 +329,13 @@ The document service remains free of a SQL dependency:
 3. If absent, read the specified input generation and process it.
 4. Create an immutable result object using a create-only precondition.
 5. If another worker already created it, read that winning result.
-6. Publish the canonical result event stored in that object.
+6. Publish the canonical result event reconstructed from stored metadata and that object's generation.
 7. Return success only after Pub/Sub accepts publication.
 
 This handles the **GCS write succeeded, publication failed** window. Redelivery reads the stored result and republishes
-the same event.
+the same event. The report stores the stable result event ID, timestamp, request identity, and outcome. Its own GCS
+generation is only known after creation, so the publisher combines that generation with the stored metadata rather
+than trying to embed an object's generation inside itself before it exists.
 
 Concurrent workers may duplicate computation, but they converge on one persisted result. This design is appropriate for
 deterministic metadata processing. It would need stronger orchestration for payments or other external side effects.

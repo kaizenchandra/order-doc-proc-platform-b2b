@@ -32,7 +32,10 @@ app:
     jwk-set-uri: ${AUTH_JWK_SET_URI:}
     audience: ${AUTH_AUDIENCE:}
   storage:
+    enabled: ${STORAGE_ENABLED:false}
     upload-bucket: ${UPLOAD_BUCKET:}
+    report-bucket: ${REPORT_BUCKET:}
+    signing-service-account: ${GCS_SIGNING_SERVICE_ACCOUNT:}
   messaging:
     enabled: ${MESSAGING_ENABLED:false}
     project-id: ${PUBSUB_PROJECT_ID:}

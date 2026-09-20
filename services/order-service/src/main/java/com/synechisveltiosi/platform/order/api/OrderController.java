@@ -49,7 +49,8 @@ public class OrderController {
     public ResponseEntity<Registration> register(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID orderId,
                                                  @RequestHeader("Idempotency-Key") String key, @Valid @RequestBody RegisterDocument input) {
         var registration = documents.register(tenant(jwt), orderId, key, input);
-        return ResponseEntity.created(URI.create("/api/v1/orders/" + orderId + "/documents/" + registration.document().id())).body(registration);
+        return ResponseEntity.created(URI.create("/api/v1/orders/" + orderId + "/documents/" + registration.document().id()))
+                .cacheControl(org.springframework.http.CacheControl.noStore()).body(registration);
     }
 
     @GetMapping("/{orderId}/documents/{documentId}")
@@ -61,6 +62,13 @@ public class OrderController {
     public ResponseEntity<DocumentView> complete(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID orderId,
                                                  @PathVariable UUID documentId, HttpServletRequest request) {
         return ResponseEntity.accepted().body(documents.complete(tenant(jwt), orderId, documentId, correlation(request)));
+    }
+
+    @GetMapping("/{orderId}/documents/{documentId}/report")
+    public ResponseEntity<com.synechisveltiosi.platform.order.application.DocumentStorage.DownloadAuthorization> report(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID orderId, @PathVariable UUID documentId) {
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(documents.report(tenant(jwt), orderId, documentId));
     }
 
     private UUID tenant(Jwt jwt) {

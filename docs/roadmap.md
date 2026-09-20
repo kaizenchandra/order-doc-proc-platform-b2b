@@ -6,9 +6,9 @@ Work stops after each phase until the user replies `NEXT`.
 2. **Repository** — scaffold implemented
 3. **Domain & Database** — implemented; see [design and validation](domain-database.md)
 4. **order-service** — implemented; see [API contract and validation](order-api.md)
-5. **Pub/Sub & Reliable Messaging** — pending
-6. **document-service** — pending
-7. **Cloud Storage** — pending
+5. **Pub/Sub & Reliable Messaging** — implemented; see [contracts, recovery, and validation](messaging.md)
+6. **document-service** — implemented; see [processing, security, and recovery](document-processing.md)
+7. **Cloud Storage** — implemented; see [adapters, signing, and validation](cloud-storage.md)
 8. **notification-service** — pending
 9. **Local Environment** — pending
 10. **Testing** — pending
@@ -22,4 +22,4 @@ Work stops after each phase until the user replies `NEXT`.
 18. **Architecture Review** — pending
 19. **Interview Preparation** — pending
 
-Next: Phase 5 — Pub/Sub and reliable messaging: event contracts, outbox relay, and result consumption.
+Next: Phase 8 — notification-service: authenticated event consumption, inbox deduplication, and durable audit/notification intent.

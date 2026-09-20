@@ -4,11 +4,11 @@
 
 The service now exposes the six planned order/document endpoints. Application services own SQL transactions; controllers
 handle validated request/response records. Every business event is written to the outbox in the same transaction as its
-business change. Publication arrives in Phase 5.
+business change. [Phase 5](messaging.md) adds outbox publication and document-result consumption.
 
-The storage boundary is `DocumentStorage`: upload authorization and inspection run outside SQL transactions. A real GCS
-adapter arrives in Phase 7. The default adapter returns 503; the HTTP integration tests supply an in-memory metadata
-adapter and never claim to upload real bytes.
+The storage boundary is `DocumentStorage`: upload authorization and inspection run outside SQL transactions.
+[Phase 7](cloud-storage.md) adds GCS adapters behind `STORAGE_ENABLED=true`. The disabled adapter returns 503;
+HTTP workflow tests supply an in-memory metadata adapter, while separate SDK contract tests verify signing and reads.
 
 ## Startup and identity
 
@@ -123,9 +123,9 @@ A successful registration response has this shape:
 }
 ```
 
-The example omits other document fields. The adapter defines the actual upload method and required headers. Its contract
-requires authorization for only that object, create-only semantics, and the supplied expiration/size bounds. Phase 7
-must validate those behaviors against GCS; the current default returns 503.
+The example omits other document fields. The GCS adapter returns a V4 signed PUT URL with required `Content-Type`,
+`x-goog-if-generation-match: 0`, and `x-goog-content-length-range: 1,26214400` headers. All are signed, and the URL
+expires no later than the registration deadline. Real-cloud enforcement and IAM still require deployment validation.
 
 Registration commits before signing. If signing fails, retry with the same key to recover the same registration without
 another row. Signed URLs are generated on demand and are never stored in idempotency records. A replay after queueing
@@ -142,8 +142,12 @@ failed attempt is also returned unchanged; `/complete` is not a reprocessing end
 registrations, and terminal orders reject new queueing. Storage calls do not hold a database transaction open.
 
 Document responses include identifiers, filename/content type, status, upload expiry, processing request ID, actual
-size, checksum, failure code, completion timestamp, and version. Processing results and report download authorization
-arrive in later phases.
+size, checksum, failure code, completion timestamp, and version. Processing results arrive through the result consumer.
+
+`GET /api/v1/orders/{orderId}/documents/{documentId}/report` requires `orders:read` and tenant ownership. PROCESSED and
+FAILED documents return a five-minute-or-shorter signed GET authorization (`url`, `method`, `headers`, `expiresAt`)
+bound to the recorded report generation. Other states return 409; foreign-tenant documents return 404. Upload and
+report authorization responses include `Cache-Control: no-store`. Report signing runs outside SQL transactions.
 
 ## Errors
 
@@ -183,7 +187,7 @@ Storage inspection is separated from the final SQL transaction, which revalidate
 
 ## Production Considerations
 
-The API is ready for the next implementation phases, not cloud deployment. GCS, Pub/Sub publication, customer directory
+The API is ready for the next implementation phases, not cloud deployment. GCS/Pub/Sub infrastructure, customer directory
 integration, rate limits, identity-provider provisioning, migrations with separate privileges, retention/recovery jobs,
 and deployment configuration remain outstanding in their designated phases. Restrict the supplied identity endpoints and
 bucket through deployment configuration.

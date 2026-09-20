@@ -20,6 +20,7 @@ public class WorkflowConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.storage.enabled", havingValue = "false", matchIfMissing = true)
     DocumentStorage documentStorage() {
         return new DocumentStorage() {
             public UploadAuthorization authorize(String bucket, String objectName, String type, Instant expires, long maxBytes) {

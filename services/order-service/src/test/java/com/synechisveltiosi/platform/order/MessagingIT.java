@@ -11,6 +11,7 @@ import com.synechisveltiosi.platform.order.application.DocumentResultHandler;
 import com.synechisveltiosi.platform.order.config.MessagingProperties;
 import com.synechisveltiosi.platform.order.domain.DocumentStatus;
 import com.synechisveltiosi.platform.order.domain.GcsObjectReference;
+import com.synechisveltiosi.platform.order.domain.Order;
 import com.synechisveltiosi.platform.order.domain.OrderDocument;
 import com.synechisveltiosi.platform.order.domain.VerifiedUpload;
 import org.junit.jupiter.api.AfterAll;
@@ -303,6 +304,52 @@ class MessagingIT {
         assertEquals(DocumentResultHandler.Outcome.STALE, handler.handle(result(doc, next, false)));
         assertEquals(DocumentStatus.PROCESSED, reload(doc).status());
         assertEquals(4, inboxCount());
+    }
+
+    @Test
+    void interruptedPublicationRetainsEventAndStopsThePoll() {
+        var event = pending();
+        pending();
+        try {
+            assertEquals(1, relay((destination, bytes, attributes) -> {
+                throw new InterruptedException("shutdown");
+            }).poll());
+            assertTrue(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
+        assertNull(jdbc.queryForObject("select published_at from outbox_events where event_id = ?", Instant.class, event.eventId()));
+        assertEquals(1, jdbc.queryForObject("select count(*) from outbox_events where attempt_count = 0", Integer.class));
+    }
+
+    @Test
+    void malformedResultNacksWithoutCommittingAnInboxEntry() {
+        var nacks = new AtomicInteger();
+        receiver.receive("{}".getBytes(java.nio.charset.StandardCharsets.UTF_8), new ResultReceiver.Acknowledgement() {
+            public void ack() {
+                fail("Malformed result must not be acknowledged");
+            }
+
+            public void nack() {
+                nacks.incrementAndGet();
+            }
+        });
+        assertEquals(1, nacks.get());
+        assertEquals(0, inboxCount());
+    }
+
+    @Test
+    void wrongProcessorVersionRollsBackInboxAndAllowsCorrectedRedelivery() {
+        var doc = queued();
+        var good = result(doc, doc.processingRequestId(), true);
+        var data = (Events.DocumentResult) good.data();
+        var wrongVersion = new Events.Envelope(good.eventId(), good.eventType(), 1, good.tenantId(), good.aggregateId(),
+                good.correlationId(), null, NOW, good.source(), new Events.DocumentResult(data.documentId(),
+                data.processingRequestId(), "2", data.reportBucket(), data.reportObjectName(), data.reportGeneration(), data.sha256(), null));
+        assertThrows(IllegalArgumentException.class, () -> handler.handle(wrongVersion));
+        assertEquals(0, inboxCount());
+        assertEquals(DocumentStatus.QUEUED, reload(doc).status());
+        assertEquals(DocumentResultHandler.Outcome.APPLIED, handler.handle(good));
     }
 
     @Test

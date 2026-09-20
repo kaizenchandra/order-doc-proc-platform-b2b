@@ -1,9 +1,17 @@
 # order-service
 
-Phase 3 persistence implemented: Order/document state machines, tenant-scoped repositories, Flyway schema,
-outbox/idempotency persistence, and transactional inbox claims.
+Phases 3–5 implemented: tenant-scoped persistence and state machines, authenticated HTTP workflows,
+transactional outbox writes, leased Pub/Sub publication, and idempotent document-result consumption.
 
-No HTTP controllers or messaging consumers exist yet. Domain use cases arrive in Phase 4.
+Messaging defaults to disabled. Enable it with `MESSAGING_ENABLED=true`, `PUBSUB_PROJECT_ID`, and `REPORT_BUCKET`;
+the topics and result subscription must already exist. Cloud connections use Application Default Credentials.
+Set `PUBSUB_EMULATOR_HOST` only for a local emulator. See the [messaging guide](../../docs/messaging.md) for
+configuration, delivery guarantees, and recovery.
+
+Phase 7 adds GCS upload signing, metadata inspection, and tenant-checked report downloads. Enable with
+`STORAGE_ENABLED=true`, distinct `UPLOAD_BUCKET` / `REPORT_BUCKET`, and `GCS_SIGNING_SERVICE_ACCOUNT`.
+The runtime uses ADC; signing uses IAM impersonation without loading a private key. See the
+[Cloud Storage guide](../../docs/cloud-storage.md) for permissions, required upload headers, and generation guarantees.
 
 ## Database configuration
 
@@ -14,4 +22,4 @@ disabled.
 Tests use a disposable PostgreSQL container and require Docker during `verify`. The service owns only its database; no
 credentials or local DB defaults are embedded.
 
-See [domain and database design](../../docs/domain-and-database.md).
+See [domain and database design](../../docs/domain-and-database.md) and [HTTP API configuration](../../docs/order-api.md).

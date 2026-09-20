@@ -74,7 +74,7 @@ class OrderApiIT {
                             "--spring.datasource.password=" + database.getPassword(),
                             "--app.security.issuer=" + ISSUER, "--app.security.audience=" + AUDIENCE,
                             "--app.security.jwk-set-uri=http://127.0.0.1:" + jwks.getAddress().getPort() + "/jwks",
-                            "--app.storage.upload-bucket=test-uploads");
+                            "--app.storage.upload-bucket=test-uploads", "--app.messaging.report-bucket=test-reports");
             base = "http://127.0.0.1:" + context.getEnvironment().getProperty("local.server.port");
             json = context.getBean(ObjectMapper.class);
             jdbc = context.getBean(JdbcTemplate.class);
@@ -395,6 +395,39 @@ class OrderApiIT {
         assertEquals(1, events(order));
     }
 
+    @Test
+    void reportDownloadsRequireTenantOwnershipAndTerminalResult() throws Exception {
+        UUID tenant = UUID.randomUUID();
+        String owner = token(tenant);
+        String stranger = token(UUID.randomUUID());
+        for (boolean success : new boolean[]{true, false}) {
+            String order = create(owner);
+            String doc = register(owner, order);
+            problem(409, request("GET", doc + "/report", owner, null, null));
+            problem(404, request("GET", doc + "/report", stranger, null, null));
+            String object = jdbc.queryForObject("select object_name from order_documents where id = ?", String.class, id(doc));
+            storage.uploads.put(object, new VerifiedUpload(new GcsObjectReference("test-uploads", object, 42), 100));
+            assertEquals(202, request("POST", doc + "/complete", owner, null, null).statusCode());
+            UUID processing = jdbc.queryForObject("select processing_request_id from order_documents where id = ?", UUID.class, id(doc));
+            String reportPath = com.synechisveltiosi.platform.eventcontracts.Events.reportObject(tenant, processing);
+            var result = new com.synechisveltiosi.platform.eventcontracts.Events.Envelope(UUID.randomUUID(),
+                    success ? "DocumentProcessed" : "DocumentProcessingFailed", 1, tenant, id(order), UUID.randomUUID(), null,
+                    Instant.now(), "document-service", new com.synechisveltiosi.platform.eventcontracts.Events.DocumentResult(
+                    id(doc), processing, "1", "test-reports", reportPath, "123", success ? "a".repeat(64) : null,
+                    success ? null : "INVALID_PDF"));
+            context.getBean(com.synechisveltiosi.platform.order.application.DocumentResultHandler.class).handle(result);
+            var response = request("GET", doc + "/report", owner, null, null);
+            assertEquals(200, response.statusCode(), response.body());
+            assertTrue(response.headers().firstValue("Cache-Control").orElseThrow().contains("no-store"));
+            assertEquals("GET", json.readTree(response.body()).path("method").asText());
+            assertEquals("https://storage.example.test/test-reports/" + reportPath + "?generation=123",
+                    json.readTree(response.body()).path("url").asText());
+            problem(404, request("GET", doc + "/report", stranger, null, null));
+            String noRead = token(tenant.toString(), ISSUER, AUDIENCE, "orders:write", Instant.now().plusSeconds(300), signingKey);
+            problem(403, request("GET", doc + "/report", noRead, null, null));
+        }
+    }
+
     private static class TestStorage implements DocumentStorage {
         final Map<String, VerifiedUpload> uploads = new ConcurrentHashMap<>();
         volatile boolean signingUnavailable;
@@ -413,6 +446,14 @@ class OrderApiIT {
             var result = uploads.get(name);
             if (result == null) throw ApiFailure.conflict("Upload is not present");
             return result;
+        }
+
+        public DownloadAuthorization authorizeDownload(GcsObjectReference object, Instant expires) {
+            assertFalse(TransactionSynchronizationManager.isActualTransactionActive(), "Report signing must be outside SQL transactions");
+            assertTrue(expires.isAfter(Instant.now()));
+            assertFalse(expires.isAfter(Instant.now().plusSeconds(300)));
+            return new DownloadAuthorization(URI.create("https://storage.example.test/" + object.bucket() + "/"
+                    + object.objectName() + "?generation=" + object.generation()), "GET", Map.of(), expires);
         }
     }
 }

@@ -69,8 +69,8 @@ COMMIT
 acknowledge message
 ```
 
-Acknowledgment and publication are outside the SQL transaction. The relay and consumer workflows will be implemented in
-their designated phases.
+Acknowledgment and publication are outside the SQL transaction. [Phase 5](messaging.md) implements the order-service
+relay and result consumer; notification consumption remains in Phase 8.
 
 ## Configuration and validation
 
