@@ -10,7 +10,10 @@ import com.synechisveltiosi.platform.order.domain.VerifiedUpload;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.*;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
@@ -105,7 +108,8 @@ public final class GcsDocumentStorage implements DocumentStorage {
         Instant actual = Instant.from(formatter.parse(query.get("X-Goog-Date")))
                 .plusSeconds(Long.parseLong(query.get("X-Goog-Expires")));
         // Signing may be remote. Never hand out a URL extending the registration deadline because clocks moved.
-        if (actual.isAfter(deadline) || !actual.isAfter(clock.instant())) throw new IllegalStateException("Invalid signed expiration");
+        if (actual.isAfter(deadline) || !actual.isAfter(clock.instant()))
+            throw new IllegalStateException("Invalid signed expiration");
         return actual;
     }
 

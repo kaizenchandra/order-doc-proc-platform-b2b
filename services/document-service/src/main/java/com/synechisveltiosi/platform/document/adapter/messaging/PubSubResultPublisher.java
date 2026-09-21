@@ -29,8 +29,9 @@ public final class PubSubResultPublisher implements ResultPublisher, AutoCloseab
         channel = emulatorHost.isBlank() ? null : ManagedChannelBuilder.forTarget(emulatorHost).usePlaintext().build();
         try {
             var builder = Publisher.newBuilder(TopicName.of(project, topic));
-            if (channel != null) builder.setChannelProvider(FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel)))
-                    .setCredentialsProvider(NoCredentialsProvider.create());
+            if (channel != null)
+                builder.setChannelProvider(FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel)))
+                        .setCredentialsProvider(NoCredentialsProvider.create());
             builder.setRetrySettings(RetrySettings.newBuilder().setInitialRetryDelayDuration(Duration.ofMillis(100))
                     .setMaxRetryDelayDuration(Duration.ofSeconds(2)).setRetryDelayMultiplier(2)
                     .setRpcTimeoutMultiplier(1).setInitialRpcTimeoutDuration(Duration.ofSeconds(5))
@@ -51,8 +52,9 @@ public final class PubSubResultPublisher implements ResultPublisher, AutoCloseab
                 .putAttributes("eventId", event.eventId().toString()).putAttributes("correlationId", event.correlationId().toString());
         if (TraceContext.valid(TraceContext.current())) message.putAttributes("traceparent", TraceContext.current());
         var future = publisher.publish(message.build());
-        try { future.get(30, TimeUnit.SECONDS); }
-        catch (Exception failure) {
+        try {
+            future.get(30, TimeUnit.SECONDS);
+        } catch (Exception failure) {
             future.cancel(true);
             throw failure;
         }
@@ -61,8 +63,12 @@ public final class PubSubResultPublisher implements ResultPublisher, AutoCloseab
     @Override
     public void close() {
         publisher.shutdown();
-        try { publisher.awaitTermination(10, TimeUnit.SECONDS); }
-        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
-        finally { if (channel != null) channel.shutdownNow(); }
+        try {
+            publisher.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        } finally {
+            if (channel != null) channel.shutdownNow();
+        }
     }
 }

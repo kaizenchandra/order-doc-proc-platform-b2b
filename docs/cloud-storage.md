@@ -6,12 +6,12 @@ Google Cloud Storage Java SDK. No buckets, IAM policies, or cloud resources are 
 
 ## Enabling the adapters
 
-| Setting | Service | Purpose |
-| --- | --- | --- |
-| `STORAGE_ENABLED=true` | Both | Enable GCS; default is false |
-| `UPLOAD_BUCKET` | Both | Allowlisted input bucket |
-| `REPORT_BUCKET` | Both | Allowlisted canonical report bucket; must differ from uploads |
-| `GCS_SIGNING_SERVICE_ACCOUNT` | Order | Service account used by IAM signing |
+| Setting                       | Service | Purpose                                                       |
+|-------------------------------|---------|---------------------------------------------------------------|
+| `STORAGE_ENABLED=true`        | Both    | Enable GCS; default is false                                  |
+| `UPLOAD_BUCKET`               | Both    | Allowlisted input bucket                                      |
+| `REPORT_BUCKET`               | Both    | Allowlisted canonical report bucket; must differ from uploads |
+| `GCS_SIGNING_SERVICE_ACCOUNT` | Order   | Service account used by IAM signing                           |
 
 Runtime credentials use Application Default Credentials. The intended deployed sources are workload identities, not
 private-key files. Order-service constructs `ImpersonatedCredentials` for the explicit signing identity and invokes
@@ -40,7 +40,8 @@ x-goog-content-length-range: 1,26214400
 ```
 
 Clients must send every returned header unchanged. GCS's XML API defines generation-match zero as create-only and
-the content-length range as an inclusive PUT size restriction. See [GCS XML headers](https://docs.cloud.google.com/storage/docs/xml-api/reference-headers).
+the content-length range as an inclusive PUT size restriction.
+See [GCS XML headers](https://docs.cloud.google.com/storage/docs/xml-api/reference-headers).
 Content-Type is explicitly included in the V4 extension headers, which the SDK uses for canonical signing.
 
 The authorization never extends the original ten-minute registration window. The adapter caps its lifetime, leaves a
@@ -48,7 +49,8 @@ one-second margin, and checks the SDK-generated timestamp/expiration before retu
 are rejected. Signing failures return a sanitized 503; retrying the same idempotency key recovers the registration.
 Signed URLs are neither persisted in SQL nor logged. Authorization responses use `Cache-Control: no-store`.
 
-Configure the storage signer without permission to delete existing uploads. Create-only authorization prevents replacement of a
+Configure the storage signer without permission to delete existing uploads. Create-only authorization prevents
+replacement of a
 live object; bucket retention/lifecycle policy must also avoid deleting an upload while its authorization is valid.
 Do not rely on a filename, client-provided size, or declared content type as evidence of valid bytes.
 
@@ -80,11 +82,13 @@ size checks and bounded stream reads both protect report parsing.
 
 Other write errors propagate, including ambiguous failures after an accepted write. Redelivery first performs lookup,
 so it can recover the canonical report without creating a new event identity. This is the application of GCS
-[request preconditions](https://docs.cloud.google.com/storage/docs/request-preconditions) at the storage-to-messaging boundary.
+[request preconditions](https://docs.cloud.google.com/storage/docs/request-preconditions) at the storage-to-messaging
+boundary.
 
 ## Report downloads
 
-`GET /api/v1/orders/{orderId}/documents/{documentId}/report` checks `orders:read`, tenant ownership, and terminal document
+`GET /api/v1/orders/{orderId}/documents/{documentId}/report` checks `orders:read`, tenant ownership, and terminal
+document
 state before calling storage. Both PROCESSED and FAILED documents have reports. Pending documents return 409 and
 foreign-tenant documents return 404. Signing runs outside the SQL transaction.
 
@@ -92,15 +96,16 @@ The response has `url`, `method: GET`, empty `headers`, and `expiresAt`. Its V4 
 and response parameters for an `application/json` attachment. Lifetime is at most five minutes. It does not authorize
 whatever future content might exist at the same name. The signing identity requires read access to the report bucket;
 creating a signed URL does not itself prove the object is still retained. V4 query parameters are signed, as described
-in the [Java signing options](https://docs.cloud.google.com/java/docs/reference/google-cloud-storage/latest/com.google.cloud.storage.Storage.SignUrlOption).
+in
+the [Java signing options](https://docs.cloud.google.com/java/docs/reference/google-cloud-storage/latest/com.google.cloud.storage.Storage.SignUrlOption).
 
 ## Deployment responsibilities
 
-| Identity | Required capabilities |
-| --- | --- |
-| Order runtime | Read upload metadata; invoke `iam.serviceAccounts.signBlob` on the designated signer |
-| Signing service account | Create upload objects; read report objects |
-| Document runtime | Read input generations; create and read canonical reports; publish result events |
+| Identity                | Required capabilities                                                                |
+|-------------------------|--------------------------------------------------------------------------------------|
+| Order runtime           | Read upload metadata; invoke `iam.serviceAccounts.signBlob` on the designated signer |
+| Signing service account | Create upload objects; read report objects                                           |
+| Document runtime        | Read input generations; create and read canonical reports; publish result events     |
 
 Grant capabilities on the specific buckets/topics and signer resource. Keep report deletion/overwrite permissions out
 of runtime roles. Enable the IAM Service Account Credentials API for remote signing. The Pub/Sub push invocation
@@ -114,7 +119,8 @@ retention enforcement remain operational work; this phase adds no automatic dele
 
 ## Validation and limits
 
-Run `./mvnw -B -ntp verify` with JDK 21 and Docker. Full reactor verification passed on 2026-09-21: 81 tests, no failures
+Run `./mvnw -B -ntp verify` with JDK 21 and Docker. Full reactor verification passed on 2026-09-21: 81 tests, no
+failures
 or skips. The new coverage includes:
 
 - Real SDK V4 canonical-request hashing, signed upload bounds, expiration, and report generation query parameters.

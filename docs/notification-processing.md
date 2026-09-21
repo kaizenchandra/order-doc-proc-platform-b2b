@@ -8,17 +8,18 @@ Order amounts are decoded with decimal precision preserved.
 
 ## Authentication and configuration
 
-JWT verification checks signature, issuer, expiry, audience, subject, exact push service-account email, and verified email.
+JWT verification checks signature, issuer, expiry, audience, subject, exact push service-account email, and verified
+email.
 All other application routes are denied. Authentication is stateless. Required settings:
 
-| Setting | Purpose |
-| --- | --- |
-| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Notification-owned PostgreSQL database |
-| `PUSH_AUDIENCE` | Exact configured push token audience |
-| `PUSH_SERVICE_ACCOUNT_EMAIL` | Allowed Pub/Sub invocation identity |
-| `NOTIFICATION_EVENTS_SUBSCRIPTION` | Comma-separated full subscription names, without spaces |
-| `PUSH_ISSUER` | Defaults to `https://accounts.google.com` |
-| `PUSH_JWK_SET_URI` | Defaults to Google's public OAuth signing keys |
+| Setting                                | Purpose                                                 |
+|----------------------------------------|---------------------------------------------------------|
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Notification-owned PostgreSQL database                  |
+| `PUSH_AUDIENCE`                        | Exact configured push token audience                    |
+| `PUSH_SERVICE_ACCOUNT_EMAIL`           | Allowed Pub/Sub invocation identity                     |
+| `NOTIFICATION_EVENTS_SUBSCRIPTION`     | Comma-separated full subscription names, without spaces |
+| `PUSH_ISSUER`                          | Defaults to `https://accounts.google.com`               |
+| `PUSH_JWK_SET_URI`                     | Defaults to Google's public OAuth signing keys          |
 
 Create independent notification subscriptions on order-events and document-results, both targeting this endpoint.
 Do not reuse the order-service result subscription. Cloud Run IAM invocation policy and subscription resources remain

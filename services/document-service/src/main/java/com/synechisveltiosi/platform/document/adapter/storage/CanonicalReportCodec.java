@@ -9,7 +9,9 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.Instant;
 import java.util.UUID;
 
-/** JSON persistence contract for the create-only GCS report adapter. */
+/**
+ * JSON persistence contract for the create-only GCS report adapter.
+ */
 public final class CanonicalReportCodec {
     public static final int MAX_BYTES = 96 * 1024;
     private final RequestEventCodec requests = new RequestEventCodec();
@@ -28,7 +30,8 @@ public final class CanonicalReportCodec {
         var root = json.readTree(bytes);
         if (!root.path("reportVersion").isIntegralNumber() || !root.path("reportVersion").canConvertToInt()
                 || root.path("reportVersion").intValue() != 1 || !root.path("bytesRead").isIntegralNumber()
-                || !root.path("bytesRead").canConvertToLong()) throw new IllegalArgumentException("Invalid report metadata");
+                || !root.path("bytesRead").canConvertToLong())
+            throw new IllegalArgumentException("Invalid report metadata");
         String id = text(root, "resultEventId", false);
         UUID eventId = UUID.fromString(id);
         if (!eventId.toString().equalsIgnoreCase(id)) throw new IllegalArgumentException("Invalid result ID");

@@ -16,10 +16,13 @@ and a local JWK endpoint. Outbound Pub/Sub uses `MESSAGING_ENABLED=true`, `PUBSU
 
 Phase 7 adds GCS adapters. Set `STORAGE_ENABLED=true` with distinct `UPLOAD_BUCKET` and `REPORT_BUCKET` values and
 runtime ADC to enable exact-generation reads and create-only canonical reports. Storage defaults to disabled and
-returns 503 until configured. No production in-memory fallback is installed. See the [Cloud Storage guide](../../docs/cloud-storage.md).
+returns 503 until configured. No production in-memory fallback is installed. See
+the [Cloud Storage guide](../../docs/cloud-storage.md).
 
 Run `./mvnw -B -ntp -pl services/document-service -am verify` from the repository root with JDK 21. Tests use local
 HTTP/JWK servers, publisher substitutes, and scripted GCS HTTP responses exercised through the real SDK;
 they need no GCP credentials or database.
 
 See [processing, security, and recovery design](../../docs/document-processing.md).
+
+Cloud Run image, health probes, and deployment contract: [runbook](../../docs/cloud-run.md).

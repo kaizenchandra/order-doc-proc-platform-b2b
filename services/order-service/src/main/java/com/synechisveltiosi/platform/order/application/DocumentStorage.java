@@ -17,11 +17,12 @@ public interface DocumentStorage {
     VerifiedUpload inspect(String bucket, String objectName);
 
     default DownloadAuthorization authorizeDownload(com.synechisveltiosi.platform.order.domain.GcsObjectReference object,
-                                                     Instant expiresAt) {
+                                                    Instant expiresAt) {
         throw new ApiFailure(503, "Report downloads are not configured");
     }
 
-    record DownloadAuthorization(URI url, String method, Map<String, String> headers, Instant expiresAt) { }
+    record DownloadAuthorization(URI url, String method, Map<String, String> headers, Instant expiresAt) {
+    }
 
     record UploadAuthorization(URI url, String method, Map<String, String> headers, Instant expiresAt) {
     }

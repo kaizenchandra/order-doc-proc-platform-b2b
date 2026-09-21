@@ -19,11 +19,18 @@ public class PushCodec {
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .enable(tools.jackson.core.StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
 
+    private static String text(JsonNode node, String name) {
+        if (!node.path(name).isString() || node.path(name).asText().isBlank())
+            throw new IllegalArgumentException("Missing field");
+        return node.path(name).asText();
+    }
+
     public Delivery decode(byte[] body, String subscriptions) {
         if (body.length == 0 || body.length > MAX_PUSH_BYTES) throw new IllegalArgumentException("Invalid push size");
         var wrapper = json.readTree(body);
         String subscription = text(wrapper, "subscription");
-        if (!java.util.Set.of(subscriptions.split(",")).contains(subscription)) throw new IllegalArgumentException("Unexpected subscription");
+        if (!java.util.Set.of(subscriptions.split(",")).contains(subscription))
+            throw new IllegalArgumentException("Unexpected subscription");
         var message = wrapper.path("message");
         String encoded = text(message, "data");
         if (encoded.length() > 4 * ((MAX_EVENT_BYTES + 2) / 3)) throw new IllegalArgumentException("Event too large");
@@ -33,10 +40,6 @@ public class PushCodec {
         return new Delivery(event, trace.isString() ? trace.asText() : null);
     }
 
-    private static String text(JsonNode node, String name) {
-        if (!node.path(name).isString() || node.path(name).asText().isBlank()) throw new IllegalArgumentException("Missing field");
-        return node.path(name).asText();
+    public record Delivery(Events.Envelope event, String traceparent) {
     }
-
-    public record Delivery(Events.Envelope event, String traceparent) { }
 }

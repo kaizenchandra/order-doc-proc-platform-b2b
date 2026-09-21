@@ -1,0 +1,57 @@
+# Real deployment inputs are required. See values.example.yaml; no default cloud resources or secrets.
+image:
+  repository: ""
+  digest: ""
+  pullPolicy: IfNotPresent
+architecture: amd64
+replicaCount: 2
+serviceAccount:
+  googleServiceAccount: ""
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+    ephemeral-storage: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+    ephemeral-storage: 1Gi
+database:
+  instanceConnectionName: ""
+  name: orders
+  existingSecret: ""
+  usernameKey: username
+  passwordKey: password
+  poolSize: 5
+  # Order-service-only allowance, including surge and terminating pods; reserve other consumers separately.
+  connectionBudget: 50
+app:
+  projectId: ""
+  authIssuer: ""
+  authJwkSetUri: ""
+  authAudience: ""
+  uploadBucket: ""
+  reportBucket: ""
+  signingServiceAccount: ""
+  orderEventsTopic: order-events
+  requestsTopic: document-requests
+  resultsSubscription: order-document-results
+ingress:
+  enabled: false
+  host: ""
+  # Existing global static address and Compute Engine SSL certificate; Terraform/platform owns them.
+  staticIpName: ""
+  preSharedCertificate: ""
+networkPolicy:
+  enabled: true
+  # Exact private Cloud SQL address(es), e.g. 10.20.0.3/32, connector traffic uses TCP 3307.
+  sqlCidrs: [ ]
+  # Google external Application Load Balancer proxy/health-check sources.
+  ingressCidrs: [ 130.211.0.0/22, 35.191.0.0/16 ]
+  # Supports kube-dns plus GKE node-local DNS. Verify the latter against the target cluster.
+  nodeLocalDnsCidr: 169.254.20.10/32

@@ -2,15 +2,16 @@
 
 Order-service now has versioned event contracts, a SQL outbox relay, a Pub/Sub transport, and a transactional
 document-result consumer. Messaging is disabled by default. [Phase 6](document-processing.md) adds document processing
-and [Phase 7](cloud-storage.md) adds GCS adapters. Notification delivery and infrastructure provisioning remain later work.
+and [Phase 7](cloud-storage.md) adds GCS adapters. Notification delivery and infrastructure provisioning remain later
+work.
 
 ## Topics and subscriptions
 
-| Topic | Event types | Consumer subscription |
-| --- | --- | --- |
-| `order-events` | `OrderCreated`, `OrderStatusChanged` | Separate notification subscription in Phase 8 |
-| `document-requests` | `DocumentProcessingRequested` | Document-service push subscription in Phase 6/12 |
-| `document-results` | `DocumentProcessed`, `DocumentProcessingFailed` | `order-document-results` streaming pull; separate notification subscription later |
+| Topic               | Event types                                     | Consumer subscription                                                             |
+|---------------------|-------------------------------------------------|-----------------------------------------------------------------------------------|
+| `order-events`      | `OrderCreated`, `OrderStatusChanged`            | Separate notification subscription in Phase 8                                     |
+| `document-requests` | `DocumentProcessingRequested`                   | Document-service push subscription in Phase 6/12                                  |
+| `document-results`  | `DocumentProcessed`, `DocumentProcessingFailed` | `order-document-results` streaming pull; separate notification subscription later |
 
 Independent consumers require separate subscriptions to receive their own copy. Order-service publishes to the
 first two topics and consumes the result subscription. It does not provision topics, subscriptions, IAM, or
@@ -50,13 +51,13 @@ Failed publication retains the row with jittered exponential backoff, capped at 
 is retained with `INVALID_EVENT`; transport failures use `PUBLISH_FAILED`. No row is silently discarded or
 automatically deleted after a retry limit. Interrupted publication stops that poll and retains the event.
 
-| Failure boundary | Recovery |
-| --- | --- |
-| Before the business transaction commits | Neither business change nor outbox event commits |
-| After claim, before publication | Lease expires and another worker can claim the row |
-| After broker acceptance, before SQL marking | Retry republishes the same envelope and event ID |
-| Old worker finishes after lease replacement | Token check prevents it marking or rescheduling the new claim |
-| Invalid stored event | Row remains visible for diagnosis and repair; other eligible rows can progress |
+| Failure boundary                            | Recovery                                                                       |
+|---------------------------------------------|--------------------------------------------------------------------------------|
+| Before the business transaction commits     | Neither business change nor outbox event commits                               |
+| After claim, before publication             | Lease expires and another worker can claim the row                             |
+| After broker acceptance, before SQL marking | Retry republishes the same envelope and event ID                               |
+| Old worker finishes after lease replacement | Token check prevents it marking or rescheduling the new claim                  |
+| Invalid stored event                        | Row remains visible for diagnosis and repair; other eligible rows can progress |
 
 This provides at-least-once publication. A timeout can have an ambiguous broker outcome, so consumers must
 deduplicate even when a publication attempt appears to fail.
@@ -81,15 +82,15 @@ outstanding messages and 4 MiB. Application shutdown stops the relay and subscri
 
 Database and HTTP authentication configuration from [order-api.md](order-api.md) still applies.
 
-| Environment variable | Default | Purpose |
-| --- | --- | --- |
-| `MESSAGING_ENABLED` | `false` | Start relay, publishers, and subscriber |
-| `PUBSUB_PROJECT_ID` | empty | Required when messaging is enabled |
-| `REPORT_BUCKET` | empty | Required when enabled; allowlisted result bucket |
-| `PUBSUB_EMULATOR_HOST` | empty | Explicit local `host:port`; enables plaintext and no credentials |
-| `ORDER_EVENTS_TOPIC` | `order-events` | Physical order-events topic ID |
-| `DOCUMENT_REQUESTS_TOPIC` | `document-requests` | Physical processing-request topic ID |
-| `ORDER_RESULTS_SUBSCRIPTION` | `order-document-results` | Existing subscription to document-results |
+| Environment variable         | Default                  | Purpose                                                          |
+|------------------------------|--------------------------|------------------------------------------------------------------|
+| `MESSAGING_ENABLED`          | `false`                  | Start relay, publishers, and subscriber                          |
+| `PUBSUB_PROJECT_ID`          | empty                    | Required when messaging is enabled                               |
+| `REPORT_BUCKET`              | empty                    | Required when enabled; allowlisted result bucket                 |
+| `PUBSUB_EMULATOR_HOST`       | empty                    | Explicit local `host:port`; enables plaintext and no credentials |
+| `ORDER_EVENTS_TOPIC`         | `order-events`           | Physical order-events topic ID                                   |
+| `DOCUMENT_REQUESTS_TOPIC`    | `document-requests`      | Physical processing-request topic ID                             |
+| `ORDER_RESULTS_SUBSCRIPTION` | `order-document-results` | Existing subscription to document-results                        |
 
 Spring properties `app.messaging.lease-seconds` (60–600, default 90) and `app.messaging.max-per-poll` (1–100,
 default 20) tune the relay. Physical topic IDs must differ; stored logical destinations remain stable when

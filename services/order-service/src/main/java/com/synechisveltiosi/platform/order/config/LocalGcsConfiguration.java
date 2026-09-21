@@ -9,7 +9,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
-/** Explicit development profile. Never uses ADC or a cloud signing identity. */
+/**
+ * Explicit development profile. Never uses ADC or a cloud signing identity.
+ */
 @Configuration(proxyBeanMethods = false)
 @Profile("local")
 @ConditionalOnProperty(name = "app.storage.enabled", havingValue = "true")
@@ -26,6 +28,7 @@ public class LocalGcsConfiguration {
                 .setRetrySettings(StorageOptions.getDefaultRetrySettings().toBuilder().setMaxAttempts(3)
                         .setTotalTimeoutDuration(java.time.Duration.ofSeconds(20)).build()).build().getService();
     }
+
     @Bean
     com.synechisveltiosi.platform.order.application.DocumentStorage localDocumentStorage(
             Storage storage, java.time.Clock clock, @Value("${app.storage.upload-bucket}") String uploads,
@@ -35,7 +38,10 @@ public class LocalGcsConfiguration {
         generator.initialize(2048);
         var privateKey = generator.generateKeyPair().getPrivate();
         var signer = new com.google.auth.ServiceAccountSigner() {
-            public String getAccount() { return "local-signer@local-platform.invalid"; }
+            public String getAccount() {
+                return "local-signer@local-platform.invalid";
+            }
+
             public byte[] sign(byte[] bytes) {
                 try {
                     var signature = java.security.Signature.getInstance("SHA256withRSA");

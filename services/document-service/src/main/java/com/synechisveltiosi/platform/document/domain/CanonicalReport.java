@@ -6,7 +6,9 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Immutable JSON report. The object's own generation is supplied by storage after creation. */
+/**
+ * Immutable JSON report. The object's own generation is supplied by storage after creation.
+ */
 public record CanonicalReport(int reportVersion, Events.Envelope request, UUID resultEventId,
                               Instant completedAt, long bytesRead, String sha256, String failureCode) {
     public CanonicalReport {

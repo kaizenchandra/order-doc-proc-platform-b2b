@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: { { include "order.name" . } }
+  labels:
+    { { - include "order.labels" . | nindent 4 } }
+spec:
+  { { - if not .Values.autoscaling.enabled } }
+  replicas: { { .Values.replicaCount } }
+  { { - end } }
+  revisionHistoryLimit: 3
+  minReadySeconds: 10
+  progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      { { - include "order.selector" . | nindent 6 } }
+  template:
+    metadata:
+      labels:
+        { { - include "order.selector" . | nindent 8 } }
+      annotations:
+        checksum/config: { { include (print $.Template.BasePath "/configmap.yaml") . | sha256sum } }
+    spec:
+      serviceAccountName: { { include "order.name" . } }
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 180
+      nodeSelector:
+        kubernetes.io/arch: { { .Values.architecture } }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              { { - include "order.selector" . | nindent 14 } }
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              { { - include "order.selector" . | nindent 14 } }
+      containers:
+        - name: order-service
+          image: { { printf "%s@%s" .Values.image.repository .Values.image.digest | quote } }
+          imagePullPolicy: { { .Values.image.pullPolicy } }
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ ALL ]
+          envFrom:
+            - configMapRef:
+                name: { { include "order.name" . } }
+          env:
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: { { .Values.database.existingSecret } }
+                  key: { { .Values.database.usernameKey } }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: { { .Values.database.existingSecret } }
+                  key: { { .Values.database.passwordKey } }
+          resources:
+            { { - toYaml .Values.resources | nindent 12 } }
+          startupProbe:
+            httpGet: { path: /livez, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: { path: /livez, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 2
+          lifecycle:
+            preStop:
+              exec:
+                command: [ /bin/sh, -c, sleep 45 ]
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 128Mi

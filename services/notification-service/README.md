@@ -15,3 +15,5 @@ Flyway migrates at startup by default. Production deployments will migrate separ
 
 Run `./mvnw -B -ntp -pl services/notification-service -am verify` with JDK 21 and Docker.
 See [consumer behavior and validation](../../docs/notification-processing.md).
+
+Cloud Run image, health probes, and deployment contract: [runbook](../../docs/cloud-run.md).

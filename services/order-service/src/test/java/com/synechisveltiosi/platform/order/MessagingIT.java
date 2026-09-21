@@ -9,11 +9,7 @@ import com.synechisveltiosi.platform.order.adapter.persistence.*;
 import com.synechisveltiosi.platform.order.application.ApiFailure;
 import com.synechisveltiosi.platform.order.application.DocumentResultHandler;
 import com.synechisveltiosi.platform.order.config.MessagingProperties;
-import com.synechisveltiosi.platform.order.domain.DocumentStatus;
-import com.synechisveltiosi.platform.order.domain.GcsObjectReference;
-import com.synechisveltiosi.platform.order.domain.Order;
-import com.synechisveltiosi.platform.order.domain.OrderDocument;
-import com.synechisveltiosi.platform.order.domain.VerifiedUpload;
+import com.synechisveltiosi.platform.order.domain.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -367,6 +363,7 @@ class MessagingIT {
         assertEquals(0, inboxCount());
         assertEquals(DocumentStatus.QUEUED, reload(doc).status());
     }
+
     @Test
     void realBrokerRedeliversAfterRollbackAndFansOutToIndependentSubscription() throws Exception {
         try (var emulator = new org.testcontainers.containers.GenericContainer<>(
@@ -406,8 +403,15 @@ class MessagingIT {
                     public void receive(byte[] bytes, java.util.Map<String, String> attributes, Acknowledgement acknowledgement) {
                         attempts.incrementAndGet();
                         super.receive(bytes, attributes, new Acknowledgement() {
-                            public void ack() { acknowledgement.ack(); accepted.countDown(); }
-                            public void nack() { acknowledgement.nack(); rejected.countDown(); }
+                            public void ack() {
+                                acknowledgement.ack();
+                                accepted.countDown();
+                            }
+
+                            public void nack() {
+                                acknowledgement.nack();
+                                rejected.countDown();
+                            }
                         });
                     }
                 };

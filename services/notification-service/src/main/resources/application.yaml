@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 8s
   application:
     name: notification-service
   datasource:
@@ -33,3 +35,25 @@ app:
     audience: ${PUSH_AUDIENCE:}
     service-account-email: ${PUSH_SERVICE_ACCOUNT_EMAIL:}
     subscription: ${NOTIFICATION_EVENTS_SUBSCRIPTION:}
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
+        add-additional-paths: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db

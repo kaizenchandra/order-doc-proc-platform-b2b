@@ -1,6 +1,9 @@
 package com.synechisveltiosi.platform.document.config;
 
-import com.synechisveltiosi.platform.document.application.*;
+import com.synechisveltiosi.platform.document.application.DocumentObjects;
+import com.synechisveltiosi.platform.document.application.DocumentProcessor;
+import com.synechisveltiosi.platform.document.application.ReportStore;
+import com.synechisveltiosi.platform.document.application.ResultPublisher;
 import com.synechisveltiosi.platform.document.domain.CanonicalReport;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -24,7 +27,9 @@ public class ProcessingConfiguration {
     @ConditionalOnMissingBean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.storage.enabled", havingValue = "false", matchIfMissing = true)
     DocumentObjects documentObjects() {
-        return (bucket, name, generation) -> { throw new IOException("Document storage is not configured"); };
+        return (bucket, name, generation) -> {
+            throw new IOException("Document storage is not configured");
+        };
     }
 
     @Bean
@@ -35,6 +40,7 @@ public class ProcessingConfiguration {
             public Optional<Stored> find(String bucket, String name) throws IOException {
                 throw new IOException("Report storage is not configured");
             }
+
             public Stored createIfAbsent(String bucket, String name, CanonicalReport report) throws IOException {
                 throw new IOException("Report storage is not configured");
             }

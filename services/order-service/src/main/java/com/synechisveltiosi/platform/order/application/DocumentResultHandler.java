@@ -20,6 +20,7 @@ public class DocumentResultHandler {
     private final OrderJournal journal;
     private final MessagingProperties settings;
     private final Clock clock;
+
     public DocumentResultHandler(InboxStore inbox, OrderRepository orders, OrderDocumentRepository documents,
                                  OrderJournal journal, MessagingProperties settings, Clock clock) {
         this.inbox = inbox;

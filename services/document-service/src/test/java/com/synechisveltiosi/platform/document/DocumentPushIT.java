@@ -11,18 +11,26 @@ import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpServer;
 import com.synechisveltiosi.platform.commonobservability.TraceContext;
 import com.synechisveltiosi.platform.document.application.ResultPublisher;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.http.*;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.Base64;
+import java.util.Date;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -50,14 +58,19 @@ class DocumentPushIT {
             keys.createContext("/jwks", exchange -> {
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
                 exchange.sendResponseHeaders(200, jwks.length);
-                try (var body = exchange.getResponseBody()) { body.write(jwks); }
+                try (var body = exchange.getResponseBody()) {
+                    body.write(jwks);
+                }
             });
             keys.start();
             // Separate interface beans ensure the real processor is exercised with only external I/O replaced.
             context = new SpringApplicationBuilder(DocumentServiceApplication.class).initializers(ctx -> {
                 ctx.getBeanFactory().registerSingleton("testObjects", (com.synechisveltiosi.platform.document.application.DocumentObjects) fixture::open);
                 ctx.getBeanFactory().registerSingleton("testReports", new com.synechisveltiosi.platform.document.application.ReportStore() {
-                    public Optional<Stored> find(String bucket, String path) { return fixture.find(bucket, path); }
+                    public Optional<Stored> find(String bucket, String path) {
+                        return fixture.find(bucket, path);
+                    }
+
                     public Stored createIfAbsent(String bucket, String path, com.synechisveltiosi.platform.document.domain.CanonicalReport report) throws java.io.IOException {
                         return fixture.createIfAbsent(bucket, path, report);
                     }
@@ -80,15 +93,35 @@ class DocumentPushIT {
 
     @AfterAll
     static void stop() {
-        try { if (client != null) client.close(); }
-        finally {
-            try { if (context != null) context.close(); }
-            finally { if (keys != null) keys.stop(0); }
+        try {
+            if (client != null) client.close();
+        } finally {
+            try {
+                if (context != null) context.close();
+            } finally {
+                if (keys != null) keys.stop(0);
+            }
         }
     }
 
+    @Test
+    void probesExposeOnlyStatusAndDoNotExposeActuator() throws Exception {
+        for (String path : new String[]{"/livez", "/readyz"}) {
+            var response = client.send(HttpRequest.newBuilder(URI.create(base + path)).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, response.statusCode());
+            assertEquals(json.readTree("{\"status\":\"UP\"}"), json.readTree(response.body()));
+        }
+        var response = client.send(HttpRequest.newBuilder(URI.create(base + "/actuator/health")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, response.statusCode());
+    }
+
     @BeforeEach
-    void reset() { fixture.reset(); observedTrace.set(null); }
+    void reset() {
+        fixture.reset();
+        observedTrace.set(null);
+    }
 
     private String token(String issuer, String audience, String email, boolean verified, Instant expires, RSAKey key) throws Exception {
         var claims = new JWTClaimsSet.Builder().issuer(issuer).subject("push-identity").audience(audience)
@@ -99,7 +132,9 @@ class DocumentPushIT {
         return signed.serialize();
     }
 
-    private String token() throws Exception { return token(ISSUER, AUDIENCE, EMAIL, true, Instant.now().plusSeconds(300), signingKey); }
+    private String token() throws Exception {
+        return token(ISSUER, AUDIENCE, EMAIL, true, Instant.now().plusSeconds(300), signingKey);
+    }
 
     private String body(String trace) {
         return json.writeValueAsString(Map.of("subscription", SUBSCRIPTION, "message", Map.of("messageId", "1",

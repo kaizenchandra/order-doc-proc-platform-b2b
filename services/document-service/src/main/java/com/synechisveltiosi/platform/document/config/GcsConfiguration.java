@@ -25,7 +25,7 @@ public class GcsConfiguration {
 
     @Bean
     GcsProcessingStorage processingStorage(Storage storage, @Value("${app.storage.upload-bucket}") String uploads,
-                                          @Value("${app.storage.report-bucket}") String reports) {
+                                           @Value("${app.storage.report-bucket}") String reports) {
         return new GcsProcessingStorage(storage, uploads, reports);
     }
 }

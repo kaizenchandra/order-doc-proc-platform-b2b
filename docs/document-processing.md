@@ -29,16 +29,17 @@ The controller reads at most 96 KiB plus one byte, including for chunked request
 generations are rejected. Additive event fields are tolerated. Trace context is scoped to each delivery and propagated
 on publication; invalid trace IDs are ignored.
 
-| Response | Meaning |
-| --- | --- |
-| 204 | Canonical success or terminal-failure report exists and result publication was accepted |
-| 401 | Missing or invalid bearer token |
-| 403 | Authenticated request targets a disallowed endpoint/method |
-| 413 | Push body exceeds the limit |
-| 503 | Processing rejected or storage/publication failed; delivery must remain retryable |
+| Response | Meaning                                                                                 |
+|----------|-----------------------------------------------------------------------------------------|
+| 204      | Canonical success or terminal-failure report exists and result publication was accepted |
+| 401      | Missing or invalid bearer token                                                         |
+| 403      | Authenticated request targets a disallowed endpoint/method                              |
+| 413      | Push body exceeds the limit                                                             |
+| 503      | Processing rejected or storage/publication failed; delivery must remain retryable       |
 
 No background task continues after sending 204. Malformed events deliberately remain non-2xx; configure subscription
-retry and dead-letter policies to handle poison messages. Google's [push delivery documentation](https://docs.cloud.google.com/pubsub/docs/push)
+retry and dead-letter policies to handle poison messages.
+Google's [push delivery documentation](https://docs.cloud.google.com/pubsub/docs/push)
 defines success status codes as acknowledgments and other responses as negative acknowledgments.
 
 ## Push authentication
@@ -50,7 +51,8 @@ validated event produced by order-service, not an end-user access token.
 
 All other application paths are denied. Authentication is stateless with no cookie session. Cloud Run invocation IAM
 and Pub/Sub token-creation permissions remain deployment work in Phase 12/13; application validation alone does not
-provision them. See Google's [authenticated push guidance](https://docs.cloud.google.com/pubsub/docs/authenticate-push-subscriptions).
+provision them. See
+Google's [authenticated push guidance](https://docs.cloud.google.com/pubsub/docs/authenticate-push-subscriptions).
 
 ## Processor version 1
 
@@ -63,12 +65,12 @@ Reads are streamed with an 8 KiB buffer and a 1 KiB trailer window. The processo
 byte; that extra byte distinguishes an oversized object. Input streams close on both success and failure. `bytesRead`
 is the inspected count, not necessarily the full object length for an early rejection.
 
-| Condition | Durable failure code |
-| --- | --- |
+| Condition                             | Durable failure code |
+|---------------------------------------|----------------------|
 | Content type is not `application/pdf` | `UNSUPPORTED_FORMAT` |
-| Empty PDF input | `EMPTY_DOCUMENT` |
-| Input exceeds 25 MiB | `DOCUMENT_TOO_LARGE` |
-| Header or trailer check fails | `INVALID_PDF` |
+| Empty PDF input                       | `EMPTY_DOCUMENT`     |
+| Input exceeds 25 MiB                  | `DOCUMENT_TOO_LARGE` |
+| Header or trailer check fails         | `INVALID_PDF`        |
 
 Storage I/O errors, missing generations, permission failures, and publisher errors propagate as retryable delivery
 failures. They are never translated into these terminal document outcomes. Unknown processor versions are also rejected
@@ -87,7 +89,8 @@ The version 1 JSON report contains:
 - A stable result event UUID and completion timestamp.
 - Inspected byte count and exactly one of SHA-256 or terminal failure code.
 
-`CanonicalReportCodec` explicitly encodes and validates this JSON, with a 96 KiB limit. It does not deserialize arbitrary
+`CanonicalReportCodec` explicitly encodes and validates this JSON, with a 96 KiB limit. It does not deserialize
+arbitrary
 Java class names. A corrupt or unsupported persisted report fails the delivery rather than being overwritten.
 
 The report cannot contain its own generation before creation. The stable result event is therefore reconstructed from
@@ -98,38 +101,40 @@ Before publication the workflow checks that the saved tenant, order, document, i
 request, and processor version match the incoming request. Reusing a processing request ID for different input is an
 error. A duplicate event for the same processing identity can reuse the existing report even if its envelope ID differs.
 
-| Failure window | Redelivery behavior |
-| --- | --- |
-| Input read or report creation fails before commit | Retry processing; publish nothing |
-| Report write commits but its response is lost | Read the saved report and publish its stable result |
-| Concurrent workers compute different candidate event IDs | All publish the winning persisted report's event |
-| Publication fails or has an ambiguous timeout | Keep the report; retry the same result event |
-| Publication succeeds but HTTP response is lost | Republish the same result; downstream inbox deduplicates |
+| Failure window                                           | Redelivery behavior                                      |
+|----------------------------------------------------------|----------------------------------------------------------|
+| Input read or report creation fails before commit        | Retry processing; publish nothing                        |
+| Report write commits but its response is lost            | Read the saved report and publish its stable result      |
+| Concurrent workers compute different candidate event IDs | All publish the winning persisted report's event         |
+| Publication fails or has an ambiguous timeout            | Keep the report; retry the same result event             |
+| Publication succeeds but HTTP response is lost           | Republish the same result; downstream inbox deduplicates |
 
 The Pub/Sub adapter uses ADC/TLS normally, or an explicitly configured plaintext/no-credentials emulator channel.
 It waits for broker acceptance, with a 20-second SDK retry budget and 30-second caller deadline. Timeout does not prove
-non-delivery. Application shutdown closes the publisher. Phase 7 configures bounded storage RPC retries/timeouts; deployment
+non-delivery. Application shutdown closes the publisher. Phase 7 configures bounded storage RPC retries/timeouts;
+deployment
 must coordinate processing time, push acknowledgment deadline, concurrency, and Cloud Run request timeout.
 
 ## Configuration and phase boundary
 
-| Variable | Default / requirement |
-| --- | --- |
-| `PUSH_AUDIENCE` | Required; expected push token audience |
-| `PUSH_SERVICE_ACCOUNT_EMAIL` | Required; expected invocation identity |
-| `DOCUMENT_REQUESTS_SUBSCRIPTION` | Required full `projects/.../subscriptions/...` name |
-| `PUSH_ISSUER` | `https://accounts.google.com` |
-| `PUSH_JWK_SET_URI` | `https://www.googleapis.com/oauth2/v3/certs` |
-| `UPLOAD_BUCKET` | Required for processing; input bucket allowlist |
-| `REPORT_BUCKET` | Required for processing; canonical reports bucket |
-| `MESSAGING_ENABLED` | `false`; enable outbound Pub/Sub explicitly |
-| `PUBSUB_PROJECT_ID` | Required when messaging is enabled |
-| `DOCUMENT_RESULTS_TOPIC` | `document-results` |
-| `PUBSUB_EMULATOR_HOST` | Empty; use `host:port` only for an explicit local emulator |
+| Variable                         | Default / requirement                                      |
+|----------------------------------|------------------------------------------------------------|
+| `PUSH_AUDIENCE`                  | Required; expected push token audience                     |
+| `PUSH_SERVICE_ACCOUNT_EMAIL`     | Required; expected invocation identity                     |
+| `DOCUMENT_REQUESTS_SUBSCRIPTION` | Required full `projects/.../subscriptions/...` name        |
+| `PUSH_ISSUER`                    | `https://accounts.google.com`                              |
+| `PUSH_JWK_SET_URI`               | `https://www.googleapis.com/oauth2/v3/certs`               |
+| `UPLOAD_BUCKET`                  | Required for processing; input bucket allowlist            |
+| `REPORT_BUCKET`                  | Required for processing; canonical reports bucket          |
+| `MESSAGING_ENABLED`              | `false`; enable outbound Pub/Sub explicitly                |
+| `PUBSUB_PROJECT_ID`              | Required when messaging is enabled                         |
+| `DOCUMENT_RESULTS_TOPIC`         | `document-results`                                         |
+| `PUBSUB_EMULATOR_HOST`           | Empty; use `host:port` only for an explicit local emulator |
 
 Missing push identity settings fail startup. Unconfigured storage or publisher ports fail delivery with 503. Supplying
 bucket names alone does not enable GCS: also set `STORAGE_ENABLED=true` and provide runtime ADC. There is no production
-in-memory storage. Phase 7 SDK contract tests verify generation matching and create-only preconditions on outgoing requests.
+in-memory storage. Phase 7 SDK contract tests verify generation matching and create-only preconditions on outgoing
+requests.
 
 ## Validation
 

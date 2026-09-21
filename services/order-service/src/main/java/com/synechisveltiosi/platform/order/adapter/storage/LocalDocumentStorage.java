@@ -7,7 +7,9 @@ import com.synechisveltiosi.platform.order.domain.VerifiedUpload;
 import java.net.URI;
 import java.time.Instant;
 
-/** fake-gcs-server requires URL host rewriting; it does not enforce signatures or expiry. */
+/**
+ * fake-gcs-server requires URL host rewriting; it does not enforce signatures or expiry.
+ */
 public final class LocalDocumentStorage implements DocumentStorage {
     private final DocumentStorage delegate;
     private final String endpoint;
@@ -31,7 +33,9 @@ public final class LocalDocumentStorage implements DocumentStorage {
         return new UploadAuthorization(local(authorization.url()), authorization.method(), authorization.headers(), authorization.expiresAt());
     }
 
-    public VerifiedUpload inspect(String bucket, String name) { return delegate.inspect(bucket, name); }
+    public VerifiedUpload inspect(String bucket, String name) {
+        return delegate.inspect(bucket, name);
+    }
 
     public DownloadAuthorization authorizeDownload(GcsObjectReference object, Instant expiry) {
         var authorization = delegate.authorizeDownload(object, expiry);

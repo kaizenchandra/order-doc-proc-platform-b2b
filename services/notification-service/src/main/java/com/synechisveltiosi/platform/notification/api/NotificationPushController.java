@@ -19,7 +19,7 @@ public class NotificationPushController {
     private final String subscription;
 
     public NotificationPushController(PushCodec codec, NotificationHandler processor,
-                                  @Value("${app.push.subscription}") String subscription) {
+                                      @Value("${app.push.subscription}") String subscription) {
         if (java.util.Arrays.stream(subscription.split(",", -1)).anyMatch(value -> !value.matches("projects/[^/]+/subscriptions/[^/]+")))
             throw new IllegalArgumentException("Push subscription is required");
         this.codec = codec;

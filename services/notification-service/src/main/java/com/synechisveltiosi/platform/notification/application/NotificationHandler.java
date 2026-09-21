@@ -1,7 +1,10 @@
 package com.synechisveltiosi.platform.notification.application;
 
 import com.synechisveltiosi.platform.eventcontracts.Events;
-import com.synechisveltiosi.platform.notification.adapter.persistence.*;
+import com.synechisveltiosi.platform.notification.adapter.persistence.AuditJournal;
+import com.synechisveltiosi.platform.notification.adapter.persistence.AuditRecord;
+import com.synechisveltiosi.platform.notification.adapter.persistence.InboxStore;
+import com.synechisveltiosi.platform.notification.adapter.persistence.NotificationRecord;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
@@ -27,7 +30,8 @@ public class NotificationHandler {
         // Only deliberately selected metadata is retained; no customer details or storage locations.
         Map<String, String> summary = switch (event.data()) {
             case Events.OrderCreated order -> Map.of("status", order.status());
-            case Events.OrderStatusChanged order -> Map.of("previousStatus", order.previousStatus(), "status", order.status());
+            case Events.OrderStatusChanged order ->
+                    Map.of("previousStatus", order.previousStatus(), "status", order.status());
             case Events.DocumentResult result -> Map.of("documentId", result.documentId().toString(),
                     "processingRequestId", result.processingRequestId().toString(),
                     "outcome", result.failureCode() == null ? "PROCESSED" : "FAILED",

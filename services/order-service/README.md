@@ -22,4 +22,5 @@ disabled.
 Tests use a disposable PostgreSQL container and require Docker during `verify`. The service owns only its database; no
 credentials or local DB defaults are embedded.
 
-See [domain and database design](../../docs/domain-and-database.md) and [HTTP API configuration](../../docs/order-api.md).
+See [domain and database design](../../docs/domain-and-database.md)
+and [HTTP API configuration](../../docs/order-api.md).

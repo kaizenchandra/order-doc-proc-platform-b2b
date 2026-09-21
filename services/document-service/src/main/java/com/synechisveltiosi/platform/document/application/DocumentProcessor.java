@@ -32,7 +32,8 @@ public final class DocumentProcessor {
         if (!(event.data() instanceof Events.DocumentProcessingRequested request)
                 || !"DocumentProcessingRequested".equals(event.eventType()))
             throw new IllegalArgumentException("Expected processing request");
-        if (uploadBucket.isBlank() || reportBucket.isBlank()) throw new IllegalStateException("Storage is not configured");
+        if (uploadBucket.isBlank() || reportBucket.isBlank())
+            throw new IllegalStateException("Storage is not configured");
         if (!uploadBucket.equals(request.bucket()) || !processorVersion.equals(request.processorVersion()))
             throw new IllegalArgumentException("Unsupported input bucket or processor version");
         String path = Events.reportObject(event.tenantId(), request.processingRequestId());

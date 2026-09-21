@@ -14,8 +14,8 @@ public class ResultPublisherConfiguration {
     @ConditionalOnMissingBean(ResultPublisher.class)
     @ConditionalOnProperty(name = "app.messaging.enabled", havingValue = "true")
     PubSubResultPublisher pubSubResultPublisher(@Value("${app.messaging.project-id}") String project,
-                                              @Value("${app.messaging.results-topic}") String topic,
-                                              @Value("${app.messaging.emulator-host}") String emulator) throws Exception {
+                                                @Value("${app.messaging.results-topic}") String topic,
+                                                @Value("${app.messaging.emulator-host}") String emulator) throws Exception {
         return new PubSubResultPublisher(project, topic, emulator);
     }
 
@@ -23,6 +23,8 @@ public class ResultPublisherConfiguration {
     @ConditionalOnMissingBean(ResultPublisher.class)
     @ConditionalOnProperty(name = "app.messaging.enabled", havingValue = "false", matchIfMissing = true)
     ResultPublisher unavailableResultPublisher() {
-        return event -> { throw new IllegalStateException("Result publisher is not configured"); };
+        return event -> {
+            throw new IllegalStateException("Result publisher is not configured");
+        };
     }
 }

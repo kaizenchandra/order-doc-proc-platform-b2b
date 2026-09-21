@@ -10,6 +10,7 @@ public class ResultReceiver {
     private static final Logger log = LoggerFactory.getLogger(ResultReceiver.class);
     private final EventCodec codec;
     private final DocumentResultHandler handler;
+
     public ResultReceiver(EventCodec codec, DocumentResultHandler handler) {
         this.codec = codec;
         this.handler = handler;

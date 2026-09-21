@@ -9,7 +9,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
-/** Explicit development profile. Never uses ADC or a cloud signing identity. */
+/**
+ * Explicit development profile. Never uses ADC or a cloud signing identity.
+ */
 @Configuration(proxyBeanMethods = false)
 @Profile("local")
 @ConditionalOnProperty(name = "app.storage.enabled", havingValue = "true")
@@ -26,6 +28,7 @@ public class LocalGcsConfiguration {
                 .setRetrySettings(StorageOptions.getDefaultRetrySettings().toBuilder().setMaxAttempts(3)
                         .setTotalTimeoutDuration(java.time.Duration.ofSeconds(20)).build()).build().getService();
     }
+
     @Bean
     com.synechisveltiosi.platform.document.adapter.storage.GcsProcessingStorage localProcessingStorage(
             Storage storage, @Value("${app.storage.upload-bucket}") String uploads,

@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 8s
   application:
     name: document-service
 
@@ -18,3 +20,25 @@ app:
     project-id: ${PUBSUB_PROJECT_ID:}
     results-topic: ${DOCUMENT_RESULTS_TOPIC:document-results}
     emulator-host: ${PUBSUB_EMULATOR_HOST:}
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
+        add-additional-paths: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState

@@ -7,15 +7,20 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
-/** Bounded PDF signature/trailer inspection and checksum, not a full PDF parser or malware scanner. */
+/**
+ * Bounded PDF signature/trailer inspection and checksum, not a full PDF parser or malware scanner.
+ */
 public final class PdfMetadataProcessor {
     public static final long MAX_BYTES = 25L * 1024 * 1024;
 
     public Outcome inspect(InputStream input, String contentType) throws IOException {
         if (!"application/pdf".equals(contentType)) return new Outcome(0, null, "UNSUPPORTED_FORMAT");
         MessageDigest digest;
-        try { digest = MessageDigest.getInstance("SHA-256"); }
-        catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
         byte[] buffer = new byte[8192];
         byte[] header = new byte[8];
         byte[] tail = new byte[1024];
@@ -41,5 +46,6 @@ public final class PdfMetadataProcessor {
         return new Outcome(count, HexFormat.of().formatHex(digest.digest()), null);
     }
 
-    public record Outcome(long bytesRead, String sha256, String failureCode) { }
+    public record Outcome(long bytesRead, String sha256, String failureCode) {
+    }
 }

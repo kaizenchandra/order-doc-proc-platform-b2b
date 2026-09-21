@@ -35,7 +35,8 @@ public final class GcsProcessingStorage implements DocumentObjects, ReportStore 
             var metadata = storage.get(id);
             if (metadata == null) throw new IOException("Input generation is unavailable");
             validateIdentity(metadata, bucket, name);
-            if (!id.getGeneration().equals(metadata.getGeneration())) throw new IOException("Input generation mismatch");
+            if (!id.getGeneration().equals(metadata.getGeneration()))
+                throw new IOException("Input generation mismatch");
             return new Input(read(id), metadata.getContentType());
         } catch (StorageException failure) {
             throw new IOException("Input storage is unavailable");
@@ -55,8 +56,11 @@ public final class GcsProcessingStorage implements DocumentObjects, ReportStore 
             try (var input = read(BlobId.of(bucket, name, metadata.getGeneration()))) {
                 byte[] bytes = input.readNBytes(CanonicalReportCodec.MAX_BYTES + 1);
                 CanonicalReport report;
-                try { report = codec.decode(bytes); }
-                catch (RuntimeException corrupt) { throw new IOException("Invalid canonical report"); }
+                try {
+                    report = codec.decode(bytes);
+                } catch (RuntimeException corrupt) {
+                    throw new IOException("Invalid canonical report");
+                }
                 requirePath(name, report);
                 return Optional.of(new Stored(report, metadata.getGeneration().toString()));
             }

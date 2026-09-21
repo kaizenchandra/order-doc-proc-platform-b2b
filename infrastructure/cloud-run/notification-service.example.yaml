@@ -1,0 +1,73 @@
+# Reference contract for Phase 13 Terraform; replace ALL uppercase placeholders.
+# Do not apply alongside Terraform ownership. IAM/subscriptions are separate resources.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: notification-service
+  annotations:
+    run.googleapis.com/ingress: internal
+    run.googleapis.com/invoker-iam-disabled: 'false'
+    run.googleapis.com/custom-audiences: '["https://order-platform.example.invalid/notification-push"]'
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: '0'
+        autoscaling.knative.dev/maxScale: '4'
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: 'true'
+        run.googleapis.com/startup-cpu-boost: 'true'
+        run.googleapis.com/network-interfaces: '[{"network":"VPC_NETWORK","subnetwork":"VPC_SUBNET"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+    spec:
+      serviceAccountName: notification-runtime@PROJECT_ID.iam.gserviceaccount.com
+      containerConcurrency: 5
+      timeoutSeconds: 30
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT_ID/platform/notification-service@sha256:IMAGE_DIGEST
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: '1'
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 36
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "cloud-run"
+            - name: PUSH_AUDIENCE
+              value: "https://order-platform.example.invalid/notification-push"
+            - name: PUSH_SERVICE_ACCOUNT_EMAIL
+              value: "notification-push@PROJECT_ID.iam.gserviceaccount.com"
+            - name: NOTIFICATION_EVENTS_SUBSCRIPTION
+              value: "projects/PROJECT_ID/subscriptions/notification-orders,projects/PROJECT_ID/subscriptions/notification-results"
+            - name: DB_MIGRATIONS_ENABLED
+              value: "false"
+            - name: DB_POOL_SIZE
+              value: "5"
+            - name: DB_USERNAME
+              value: "notifications"
+            - name: DB_URL
+              value: "jdbc:postgresql:///notifications?cloudSqlInstance=PROJECT_ID:REGION:SQL_INSTANCE&socketFactory=com.google.cloud.sql.postgres.SocketFactory&ipTypes=PRIVATE&cloudSqlRefreshStrategy=lazy&connectTimeout=5&socketTimeout=20"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notification-db-password
+                  key: 'SECRET_VERSION'
+  traffic:
+    - latestRevision: true
+      percent: 100

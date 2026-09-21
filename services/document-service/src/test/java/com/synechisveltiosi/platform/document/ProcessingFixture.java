@@ -1,6 +1,9 @@
 package com.synechisveltiosi.platform.document;
 
-import com.synechisveltiosi.platform.document.application.*;
+import com.synechisveltiosi.platform.document.application.DocumentObjects;
+import com.synechisveltiosi.platform.document.application.DocumentProcessor;
+import com.synechisveltiosi.platform.document.application.ReportStore;
+import com.synechisveltiosi.platform.document.application.ResultPublisher;
 import com.synechisveltiosi.platform.document.domain.CanonicalReport;
 import com.synechisveltiosi.platform.eventcontracts.Events;
 
@@ -10,7 +13,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,7 +43,8 @@ class ProcessingFixture implements DocumentObjects, ReportStore, ResultPublisher
                 "uploads", "reports", "1");
     }
 
-    @Override public Input open(String bucket, String object, String generation) throws IOException {
+    @Override
+    public Input open(String bucket, String object, String generation) throws IOException {
         if (!"uploads".equals(bucket) || !"input.pdf".equals(object) || !"42".equals(generation))
             throw new AssertionError("Must read the exact input generation");
         opens.incrementAndGet();
@@ -45,16 +52,19 @@ class ProcessingFixture implements DocumentObjects, ReportStore, ResultPublisher
         return new Input(new ByteArrayInputStream(input), contentType);
     }
 
-    @Override public Optional<Stored> find(String bucket, String path) {
+    @Override
+    public Optional<Stored> find(String bucket, String path) {
         return Optional.ofNullable(reports.get(bucket + "/" + path));
     }
 
-    @Override public Stored createIfAbsent(String bucket, String path, CanonicalReport report) throws IOException {
+    @Override
+    public Stored createIfAbsent(String bucket, String path, CanonicalReport report) throws IOException {
         if (failWrite) throw new IOException("temporary write failure");
         return reports.computeIfAbsent(bucket + "/" + path, ignored -> new Stored(report, "123"));
     }
 
-    @Override public void publish(Events.Envelope event) throws IOException {
+    @Override
+    public void publish(Events.Envelope event) throws IOException {
         if (reports.isEmpty()) throw new AssertionError("Must persist before publishing");
         if (failPublish) throw new IOException("broker unavailable");
         published.add(event);

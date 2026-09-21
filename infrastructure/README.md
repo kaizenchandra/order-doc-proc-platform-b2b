@@ -1,7 +1,9 @@
 # Infrastructure ownership
 
 `local/` contains the local service/support Dockerfiles and dependency pin, used by the root Compose file.
-See [local environment](../docs/local-environment.md). Cloud directories reserve the agreed structure; they are not deployable yet.
+See [local environment](../docs/local-environment.md). `helm/order-service` and the Kubernetes namespace prerequisite
+are implemented; see the [GKE runbook](../docs/gke.md).
+Terraform now provides bootstrap, environment roots, and a shared platform module; see the [Terraform runbook](../docs/terraform.md). No cloud resources have been provisioned.
 
 - `terraform/environments/{dev,staging,prod}`: separate root configurations and state boundaries (Phase 13). Never share
   production state with development.
@@ -14,3 +16,5 @@ See [local environment](../docs/local-environment.md). Cloud directories reserve
 
 Container digests are deployment inputs. Secrets and Terraform state are never committed. Terraform `sensitive` masks
 output; it does not remove values from state. Environment promotion must not copy secret values between environments.
+
+Cloud Run consumer images and reference deployment contracts are implemented; see the [Cloud Run runbook](../docs/cloud-run.md).

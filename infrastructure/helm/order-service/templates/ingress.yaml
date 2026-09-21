@@ -1,0 +1,41 @@
+{ { - if .Values.ingress.enabled } }
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: { { include "order.name" . } }
+spec:
+  timeoutSec: 30
+  connectionDraining:
+    drainingTimeoutSec: 30
+  healthCheck:
+    type: HTTP
+    port: 8080
+    requestPath: /readyz
+    checkIntervalSec: 10
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 2
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: { { include "order.name" . } }
+  labels:
+    { { - include "order.labels" . | nindent 4 } }
+  annotations:
+    kubernetes.io/ingress.class: gce
+    kubernetes.io/ingress.allow-http: "false"
+    kubernetes.io/ingress.global-static-ip-name: { { .Values.ingress.staticIpName | quote } }
+    ingress.gcp.kubernetes.io/pre-shared-cert: { { .Values.ingress.preSharedCertificate | quote } }
+spec:
+  rules:
+    - host: { { .Values.ingress.host | quote } }
+      http:
+        paths:
+          - path: /api/v1/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: { { include "order.name" . } }
+                port: { name: http }
+  { { - end } }

@@ -50,3 +50,6 @@ crash.log
 
 # Local helper bytecode
 /scripts/local/__pycache__/
+
+# Kubernetes validation helper bytecode
+/scripts/kubernetes/__pycache__/

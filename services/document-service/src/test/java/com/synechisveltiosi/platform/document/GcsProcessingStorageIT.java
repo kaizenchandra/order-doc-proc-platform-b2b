@@ -27,7 +27,9 @@ import java.util.zip.GZIPOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Tests the real Java SDK's HTTP requests against scripted GCS JSON API responses, not cloud IAM. */
+/**
+ * Tests the real Java SDK's HTTP requests against scripted GCS JSON API responses, not cloud IAM.
+ */
 class GcsProcessingStorageIT {
     private final CanonicalReportCodec codec = new CanonicalReportCodec();
     private final JsonMapper json = JsonMapper.builder().build();
@@ -75,7 +77,9 @@ class GcsProcessingStorageIT {
     @Test
     void rawInputBytesAreNotTransparentlyDecompressed() throws Exception {
         var bytes = new ByteArrayOutputStream();
-        try (var gzip = new GZIPOutputStream(bytes)) { gzip.write(ProcessingFixture.PDF); }
+        try (var gzip = new GZIPOutputStream(bytes)) {
+            gzip.write(ProcessingFixture.PDF);
+        }
         try (var stub = new GcsStub()) {
             stub.add(200, metadata("uploads", "input.pdf", "42", bytes.size()));
             stub.replies.add(new Reply(200, bytes.toByteArray(), "gzip"));
@@ -160,7 +164,9 @@ class GcsProcessingStorageIT {
         }
     }
 
-    private record Reply(int status, byte[] bytes, String encoding) { }
+    private record Reply(int status, byte[] bytes, String encoding) {
+    }
+
     private record Request(String method, URI uri, String body) {
         Map<String, String> query() {
             var result = new HashMap<String, String>();
@@ -183,14 +189,17 @@ class GcsProcessingStorageIT {
             server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             server.createContext("/", exchange -> {
                 var body = exchange.getRequestBody();
-                if ("gzip".equals(exchange.getRequestHeaders().getFirst("Content-Encoding"))) body = new GZIPInputStream(body);
+                if ("gzip".equals(exchange.getRequestHeaders().getFirst("Content-Encoding")))
+                    body = new GZIPInputStream(body);
                 requests.add(new Request(exchange.getRequestMethod(), exchange.getRequestURI(), new String(body.readAllBytes(), StandardCharsets.UTF_8)));
                 Reply reply = replies.poll();
                 if (reply == null) reply = new Reply(500, "{}".getBytes(StandardCharsets.UTF_8), null);
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
                 if (reply.encoding() != null) exchange.getResponseHeaders().set("Content-Encoding", reply.encoding());
                 exchange.sendResponseHeaders(reply.status(), reply.bytes().length);
-                try (var output = exchange.getResponseBody()) { output.write(reply.bytes()); }
+                try (var output = exchange.getResponseBody()) {
+                    output.write(reply.bytes());
+                }
             });
             server.start();
             client = StorageOptions.newBuilder().setProjectId("test").setCredentials(NoCredentials.getInstance())
@@ -200,11 +209,17 @@ class GcsProcessingStorageIT {
             adapter = new GcsProcessingStorage(client, "uploads", "reports");
         }
 
-        void add(int status, byte[] bytes) { replies.add(new Reply(status, bytes, null)); }
+        void add(int status, byte[] bytes) {
+            replies.add(new Reply(status, bytes, null));
+        }
 
-        @Override public void close() throws Exception {
-            try { client.close(); }
-            finally { server.stop(0); }
+        @Override
+        public void close() throws Exception {
+            try {
+                client.close();
+            } finally {
+                server.stop(0);
+            }
         }
     }
 }

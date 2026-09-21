@@ -1,0 +1,11 @@
+# Platform prerequisite, managed outside the application Helm release.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: order-platform
+  labels:
+    app.kubernetes.io/part-of: order-platform
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.30
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

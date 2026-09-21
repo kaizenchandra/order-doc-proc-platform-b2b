@@ -1,0 +1,24 @@
+# Documentation fixture only. Replace every example resource and the fake digest before installation.
+image:
+  repository: asia-south1-docker.pkg.dev/example-project/platform/order-service
+  digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+serviceAccount:
+  googleServiceAccount: order-runtime@example-project.iam.gserviceaccount.com
+database:
+  instanceConnectionName: example-project:asia-south1:platform
+  existingSecret: order-database
+app:
+  projectId: example-project
+  authIssuer: https://identity.example.com
+  authJwkSetUri: https://identity.example.com/.well-known/jwks.json
+  authAudience: order-api
+  uploadBucket: example-platform-uploads
+  reportBucket: example-platform-reports
+  signingServiceAccount: storage-signer@example-project.iam.gserviceaccount.com
+networkPolicy:
+  sqlCidrs: [ 10.20.0.3/32 ]
+ingress:
+  enabled: true
+  host: orders.example.com
+  staticIpName: order-api-address
+  preSharedCertificate: order-api-certificate

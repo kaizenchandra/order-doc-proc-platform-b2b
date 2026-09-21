@@ -8,7 +8,9 @@ import java.util.Optional;
 public interface ReportStore {
     Optional<Stored> find(String bucket, String objectName) throws IOException;
 
-    /** Atomically create if absent, or return the existing winner with its actual object generation. */
+    /**
+     * Atomically create if absent, or return the existing winner with its actual object generation.
+     */
     Stored createIfAbsent(String bucket, String objectName, CanonicalReport report) throws IOException;
 
     record Stored(CanonicalReport report, String generation) {

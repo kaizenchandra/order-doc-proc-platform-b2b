@@ -1,0 +1,341 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9.-]+(-docker\\.pkg\\.dev|\\.gcr\\.io)/[a-zA-Z0-9_./-]+$"
+        },
+        "digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "pullPolicy": {
+          "enum": [
+            "IfNotPresent",
+            "Always"
+          ]
+        }
+      },
+      "required": [
+        "repository",
+        "digest",
+        "pullPolicy"
+      ]
+    },
+    "architecture": {
+      "enum": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 50
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "googleServiceAccount": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9-]*@[a-z][a-z0-9-]*\\.iam\\.gserviceaccount\\.com$"
+        }
+      },
+      "required": [
+        "googleServiceAccount"
+      ]
+    },
+    "autoscaling": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 50
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 50
+        },
+        "targetCPUUtilizationPercentage": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 90
+        }
+      },
+      "required": [
+        "enabled",
+        "minReplicas",
+        "maxReplicas",
+        "targetCPUUtilizationPercentage"
+      ]
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[0-9]+(m|Mi|Gi)?$"
+            },
+            "memory": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[0-9]+(m|Mi|Gi)?$"
+            },
+            "ephemeral-storage": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[0-9]+(m|Mi|Gi)?$"
+            }
+          },
+          "required": [
+            "cpu",
+            "memory",
+            "ephemeral-storage"
+          ]
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[0-9]+(m|Mi|Gi)?$"
+            },
+            "memory": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[0-9]+(m|Mi|Gi)?$"
+            },
+            "ephemeral-storage": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[0-9]+(m|Mi|Gi)?$"
+            }
+          },
+          "required": [
+            "cpu",
+            "memory",
+            "ephemeral-storage"
+          ]
+        }
+      },
+      "required": [
+        "requests",
+        "limits"
+      ]
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "instanceConnectionName": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9-]+:[a-z0-9-]+:[a-z][a-z0-9-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "existingSecret": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        },
+        "usernameKey": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9._-]+$"
+        },
+        "passwordKey": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9._-]+$"
+        },
+        "poolSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "connectionBudget": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        }
+      },
+      "required": [
+        "instanceConnectionName",
+        "name",
+        "existingSecret",
+        "usernameKey",
+        "passwordKey",
+        "poolSize",
+        "connectionBudget"
+      ]
+    },
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$"
+        },
+        "authIssuer": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "authJwkSetUri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "authAudience": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uploadBucket": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$"
+        },
+        "reportBucket": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$"
+        },
+        "signingServiceAccount": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9-]*@[a-z][a-z0-9-]*\\.iam\\.gserviceaccount\\.com$"
+        },
+        "orderEventsTopic": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._~-]{2,254}$"
+        },
+        "requestsTopic": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._~-]{2,254}$"
+        },
+        "resultsSubscription": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._~-]{2,254}$"
+        }
+      },
+      "required": [
+        "projectId",
+        "authIssuer",
+        "authJwkSetUri",
+        "authAudience",
+        "uploadBucket",
+        "reportBucket",
+        "signingServiceAccount",
+        "orderEventsTopic",
+        "requestsTopic",
+        "resultsSubscription"
+      ]
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string"
+        },
+        "staticIpName": {
+          "type": "string"
+        },
+        "preSharedCertificate": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "host",
+        "staticIpName",
+        "preSharedCertificate"
+      ]
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "sqlCidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[12][0-9]|3[0-2])$"
+          }
+        },
+        "ingressCidrs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[12][0-9]|3[0-2])$"
+          }
+        },
+        "nodeLocalDnsCidr": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[12][0-9]|3[0-2])$"
+        }
+      },
+      "required": [
+        "enabled",
+        "sqlCidrs",
+        "ingressCidrs",
+        "nodeLocalDnsCidr"
+      ]
+    }
+  },
+  "required": [
+    "image",
+    "architecture",
+    "replicaCount",
+    "serviceAccount",
+    "autoscaling",
+    "resources",
+    "database",
+    "app",
+    "ingress",
+    "networkPolicy"
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

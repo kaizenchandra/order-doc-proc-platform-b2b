@@ -14,21 +14,14 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HexFormat;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class GcsDocumentStorageTest {
-    private static class CapturingSigner implements ServiceAccountSigner {
-        String payload;
-        public String getAccount() { return "signer@example.iam.gserviceaccount.com"; }
-        public byte[] sign(byte[] bytes) {
-            payload = new String(bytes, StandardCharsets.UTF_8);
-            return new byte[]{1, 2, 3}; // Only signature construction is under test; no private key or IAM call.
-        }
-    }
-
     private Map<String, String> query(URI uri) {
         var values = new HashMap<String, String>();
         for (String part : uri.getRawQuery().split("&")) {
@@ -109,5 +102,18 @@ class GcsDocumentStorageTest {
         var failure = assertThrows(ApiFailure.class, () -> adapter.inspect("uploads", "x"));
         assertEquals(503, failure.status());
         assertFalse(failure.getMessage().contains("sensitive"));
+    }
+
+    private static class CapturingSigner implements ServiceAccountSigner {
+        String payload;
+
+        public String getAccount() {
+            return "signer@example.iam.gserviceaccount.com";
+        }
+
+        public byte[] sign(byte[] bytes) {
+            payload = new String(bytes, StandardCharsets.UTF_8);
+            return new byte[]{1, 2, 3}; // Only signature construction is under test; no private key or IAM call.
+        }
     }
 }

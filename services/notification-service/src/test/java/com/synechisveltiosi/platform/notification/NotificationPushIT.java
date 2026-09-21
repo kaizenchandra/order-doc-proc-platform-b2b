@@ -10,22 +10,28 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpServer;
 import com.synechisveltiosi.platform.eventcontracts.Events;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.http.*;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class NotificationPushIT {
     private static final String ISSUER = "https://issuer.test";
@@ -33,9 +39,9 @@ class NotificationPushIT {
     private static final String EMAIL = "push@example.iam.gserviceaccount.com";
     private static final String SUBSCRIPTION = "projects/test/subscriptions/notification-orders";
     private static final String RESULTS = "projects/test/subscriptions/notification-results";
+    private static final JsonMapper json = JsonMapper.builder().build();
     private static PostgreSQLContainer database;
     private static JdbcTemplate jdbc;
-    private static final JsonMapper json = JsonMapper.builder().build();
     private static ConfigurableApplicationContext context;
     private static HttpServer keys;
     private static RSAKey signingKey;
@@ -51,7 +57,9 @@ class NotificationPushIT {
             keys.createContext("/jwks", exchange -> {
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
                 exchange.sendResponseHeaders(200, jwks.length);
-                try (var body = exchange.getResponseBody()) { body.write(jwks); }
+                try (var body = exchange.getResponseBody()) {
+                    body.write(jwks);
+                }
             });
             keys.start();
             database = new PostgreSQLContainer("postgres:17.6").withDatabaseName("notifications")
@@ -76,15 +84,35 @@ class NotificationPushIT {
 
     @AfterAll
     static void stop() {
-        try { if (client != null) client.close(); }
-        finally {
-            try { if (context != null) context.close(); }
-            finally { if (keys != null) keys.stop(0); if (database != null) database.close(); }
+        try {
+            if (client != null) client.close();
+        } finally {
+            try {
+                if (context != null) context.close();
+            } finally {
+                if (keys != null) keys.stop(0);
+                if (database != null) database.close();
+            }
         }
     }
 
+    @Test
+    void probesExposeOnlyStatusAndDoNotExposeActuator() throws Exception {
+        for (String path : new String[]{"/livez", "/readyz"}) {
+            var response = client.send(HttpRequest.newBuilder(URI.create(base + path)).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, response.statusCode());
+            assertEquals(json.readTree("{\"status\":\"UP\"}"), json.readTree(response.body()));
+        }
+        var response = client.send(HttpRequest.newBuilder(URI.create(base + "/actuator/health")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, response.statusCode());
+    }
+
     @BeforeEach
-    void reset() { jdbc.execute("TRUNCATE notification_records, audit_records, inbox_events"); }
+    void reset() {
+        jdbc.execute("TRUNCATE notification_records, audit_records, inbox_events");
+    }
 
     private String token(String issuer, String audience, String email, boolean verified, Instant expires, RSAKey key) throws Exception {
         var claims = new JWTClaimsSet.Builder().issuer(issuer).subject("push-identity").audience(audience)
@@ -95,7 +123,9 @@ class NotificationPushIT {
         return signed.serialize();
     }
 
-    private String token() throws Exception { return token(ISSUER, AUDIENCE, EMAIL, true, Instant.now().plusSeconds(300), signingKey); }
+    private String token() throws Exception {
+        return token(ISSUER, AUDIENCE, EMAIL, true, Instant.now().plusSeconds(300), signingKey);
+    }
 
     private String body(String trace) {
         return json.writeValueAsString(Map.of("subscription", SUBSCRIPTION, "message", Map.of("messageId", "1",
@@ -168,6 +198,7 @@ class NotificationPushIT {
             assertEquals(401, post(body, invalid));
         assertEquals(0, jdbc.queryForObject("select count(*) from inbox_events", Integer.class));
     }
+
     private String delivery(Events.Envelope event, String subscription, String messageId) {
         return json.writeValueAsString(Map.of("subscription", subscription, "message", Map.of("messageId", messageId,
                 "data", Base64.getEncoder().encodeToString(json.writeValueAsBytes(event)))));

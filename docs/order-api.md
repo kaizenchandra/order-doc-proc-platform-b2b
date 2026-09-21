@@ -187,7 +187,8 @@ Storage inspection is separated from the final SQL transaction, which revalidate
 
 ## Production Considerations
 
-The API is ready for the next implementation phases, not cloud deployment. GCS/Pub/Sub infrastructure, customer directory
+The API is ready for the next implementation phases, not cloud deployment. GCS/Pub/Sub infrastructure, customer
+directory
 integration, rate limits, identity-provider provisioning, migrations with separate privileges, retention/recovery jobs,
 and deployment configuration remain outstanding in their designated phases. Restrict the supplied identity endpoints and
 bucket through deployment configuration.

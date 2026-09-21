@@ -1,6 +1,8 @@
 package com.synechisveltiosi.platform.document;
 
-import com.synechisveltiosi.platform.document.application.*;
+import com.synechisveltiosi.platform.document.application.DocumentObjects;
+import com.synechisveltiosi.platform.document.application.DocumentProcessor;
+import com.synechisveltiosi.platform.document.application.ReportStore;
 import com.synechisveltiosi.platform.document.domain.PdfMetadataProcessor;
 import com.synechisveltiosi.platform.eventcontracts.Events;
 import org.junit.jupiter.api.Test;
@@ -13,7 +15,10 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -54,7 +59,10 @@ class DocumentProcessorTest {
         var fixture = new ProcessingFixture();
         var request = fixture.request();
         ReportStore ambiguous = new ReportStore() {
-            public java.util.Optional<Stored> find(String bucket, String path) { return fixture.find(bucket, path); }
+            public java.util.Optional<Stored> find(String bucket, String path) {
+                return fixture.find(bucket, path);
+            }
+
             public Stored createIfAbsent(String bucket, String path, com.synechisveltiosi.platform.document.domain.CanonicalReport report) throws IOException {
                 fixture.createIfAbsent(bucket, path, report);
                 throw new IOException("response lost after write");
@@ -74,14 +82,21 @@ class DocumentProcessorTest {
         var request = fixture.request();
         var gate = new CyclicBarrier(4);
         DocumentObjects objects = (bucket, name, generation) -> {
-            try { gate.await(5, TimeUnit.SECONDS); }
-            catch (Exception failure) { throw new IOException(failure); }
+            try {
+                gate.await(5, TimeUnit.SECONDS);
+            } catch (Exception failure) {
+                throw new IOException(failure);
+            }
             return fixture.open(bucket, name, generation);
         };
         var processor = new DocumentProcessor(objects, fixture, fixture, Clock.systemUTC(), "uploads", "reports", "1");
         try (var executor = Executors.newFixedThreadPool(4)) {
             var futures = new ArrayList<Future<?>>();
-            for (int i = 0; i < 4; i++) futures.add(executor.submit(() -> { processor.process(request); return null; }));
+            for (int i = 0; i < 4; i++)
+                futures.add(executor.submit(() -> {
+                    processor.process(request);
+                    return null;
+                }));
             for (var future : futures) future.get(10, TimeUnit.SECONDS);
         }
         assertEquals(1, fixture.reports.size());
@@ -142,7 +157,11 @@ class DocumentProcessorTest {
         assertEquals("UNSUPPORTED_FORMAT", inspector.inspect(InputStream.nullInputStream(), "image/png").failureCode());
         var count = new AtomicLong();
         InputStream endless = new InputStream() {
-            public int read() { count.incrementAndGet(); return 65; }
+            public int read() {
+                count.incrementAndGet();
+                return 65;
+            }
+
             public int read(byte[] buffer, int offset, int length) {
                 java.util.Arrays.fill(buffer, offset, offset + length, (byte) 65);
                 count.addAndGet(length);
@@ -152,17 +171,22 @@ class DocumentProcessorTest {
         assertEquals("DOCUMENT_TOO_LARGE", inspector.inspect(endless, "application/pdf").failureCode());
         assertEquals(PdfMetadataProcessor.MAX_BYTES + 1, count.get());
     }
+
     @Test
     void midStreamFailureClosesInputAndLeavesNoTerminalReport() throws Exception {
         var fixture = new ProcessingFixture();
         var closed = new java.util.concurrent.atomic.AtomicBoolean();
         DocumentObjects failing = (bucket, name, generation) -> new DocumentObjects.Input(new InputStream() {
             private int reads;
+
             public int read() throws IOException {
                 if (++reads > 16) throw new IOException("connection lost mid-stream");
                 return 'a';
             }
-            public void close() { closed.set(true); }
+
+            public void close() {
+                closed.set(true);
+            }
         }, "application/pdf");
         var processor = new DocumentProcessor(failing, fixture, fixture, Clock.systemUTC(), "uploads", "reports", "1");
         var request = fixture.request();
@@ -179,7 +203,9 @@ class DocumentProcessorTest {
         var fixture = new ProcessingFixture();
         DocumentObjects failing = (bucket, name, generation) -> new DocumentObjects.Input(
                 new ByteArrayInputStream(ProcessingFixture.PDF) {
-                    public void close() throws IOException { throw new IOException("read completion failed"); }
+                    public void close() throws IOException {
+                        throw new IOException("read completion failed");
+                    }
                 }, "application/pdf");
         var processor = new DocumentProcessor(failing, fixture, fixture, Clock.systemUTC(), "uploads", "reports", "1");
         assertThrows(IOException.class, () -> processor.process(fixture.request()));

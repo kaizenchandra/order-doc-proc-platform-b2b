@@ -1,0 +1,7 @@
+apiVersion: v2
+name: order-service
+description: Order API, transactional outbox relay, and result consumer for GKE Autopilot
+type: application
+version: 0.1.0
+appVersion: 0.0.1-SNAPSHOT
+kubeVersion: '>=1.30.0-0'

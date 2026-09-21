@@ -2,12 +2,12 @@
 
 Java 21 / Spring Boot 4.1.1 / Spring Framework 7, built incrementally as a production architecture exercise.
 
-**Current milestone: Phase 10 — Testing.** Order-service exposes authenticated order/document endpoints,
+**Current milestone: Phase 11 — GKE application release.** Order-service exposes authenticated order/document endpoints,
 a leased outbox relay, an idempotent result consumer, and signed upload/report authorization. Document-service adds
 authenticated push handling, PDF metadata processing, generation-pinned GCS reads, create-only canonical reports,
 and stable result publication. Notification-service consumes authenticated events and atomically records inbox, audit,
-and notification intent. Messaging and GCS adapters are opt-in. Cloud infrastructure directories remain reserved
-structure, not deployment-ready resources.
+and notification intent. Messaging and GCS adapters are opt-in. A GKE Helm release and namespace prerequisite are
+available; cloud resources and IAM still require provisioning.
 
 ## Build
 
@@ -74,7 +74,8 @@ Run all test layers, including emulator workflow regressions, with `./scripts/lo
 ```
 
 Dockerfiles, Compose, and explicit local storage profiles now support a complete local workflow.
-Helm templates, Terraform resources, CI workflows, and cloud profiles arrive in their designated phases.
+The order-service Helm chart adds GKE deployment, probes, autoscaling, and optional HTTPS ingress.
+Terraform resources, Cloud Run deployment, and CI workflows arrive in their designated phases.
 
 ## Design and progress
 
@@ -89,8 +90,13 @@ Helm templates, Terraform resources, CI workflows, and cloud profiles arrive in 
 - [Notification consumption, deduplication, and validation](docs/notification-processing.md)
 - [Local startup, emulators, and smoke check](docs/local-environment.md)
 - [Test layers, recovery regressions, and commands](docs/testing.md)
+- [GKE configuration, validation, and deployment runbook](docs/gke.md)
 - [Phase roadmap](docs/roadmap.md)
 - [Infrastructure ownership](infrastructure/README.md)
 
 Never commit service-account keys, real credentials, signed URLs, or Terraform state. Git ignore rules reduce accidents
 but are not a secret scanner.
+
+Cloud Run consumer images and reference deployment contracts are implemented; see the [Cloud Run runbook](docs/cloud-run.md).
+
+Terraform provisioning and environment/state separation: [Phase 13 runbook](docs/terraform.md).
