@@ -2,10 +2,11 @@
 
 Java 21 / Spring Boot 4.1.1 / Spring Framework 7, built incrementally as a production architecture exercise.
 
-**Current milestone: Phase 7 — Cloud Storage.** Order-service exposes authenticated order/document endpoints,
+**Current milestone: Phase 10 — Testing.** Order-service exposes authenticated order/document endpoints,
 a leased outbox relay, an idempotent result consumer, and signed upload/report authorization. Document-service adds
 authenticated push handling, PDF metadata processing, generation-pinned GCS reads, create-only canonical reports,
-and stable result publication. Messaging and GCS adapters are opt-in. Infrastructure directories are reserved
+and stable result publication. Notification-service consumes authenticated events and atomically records inbox, audit,
+and notification intent. Messaging and GCS adapters are opt-in. Cloud infrastructure directories remain reserved
 structure, not deployment-ready resources.
 
 ## Build
@@ -29,6 +30,19 @@ SDK and Maven runner to JDK 21.
 Surefire runs `*Test` / `*Tests`; Failsafe runs `*IT` / `*ITCase` during `verify`. PostgreSQL integration tests now
 require a running Docker engine. No cloud credentials are needed for this milestone.
 
+## Run locally
+
+With JDK 21, Docker Compose, and Python 3:
+
+```sh
+./scripts/local/up.sh
+```
+
+This starts the services and emulators and runs an end-to-end smoke check. See the
+[local environment guide](docs/local-environment.md) for endpoints, credentials, and reset/recovery behavior.
+
+Run all test layers, including emulator workflow regressions, with `./scripts/local/test.sh`.
+
 ## Repository
 
 ```text
@@ -50,7 +64,7 @@ require a running Docker engine. No cloud credentials are needed for this milest
 │   │               pubsub,storage,artifact-registry,iam,secret-manager}/
 │   ├── kubernetes/                 # Prerequisites
 │   └── helm/order-service/         # Application release
-├── scripts/                       # Local emulator init and operational scripts later
+├── scripts/                       # Local startup, issuer/bridge, and smoke check
 ├── docs/
 │   ├── architecture.md
 │   ├── repository.md
@@ -59,8 +73,8 @@ require a running Docker engine. No cloud credentials are needed for this milest
 └── .github/workflows/              # CI/CD in Phase 16
 ```
 
-Dockerfiles, Compose, Helm templates, Terraform resources, CI workflows, and environment-specific application profiles
-will be added in their designated phases; empty runnable-looking configuration is intentionally avoided.
+Dockerfiles, Compose, and explicit local storage profiles now support a complete local workflow.
+Helm templates, Terraform resources, CI workflows, and cloud profiles arrive in their designated phases.
 
 ## Design and progress
 
@@ -72,6 +86,9 @@ will be added in their designated phases; empty runnable-looking configuration i
 - [Messaging contracts, recovery, and validation](docs/messaging.md)
 - [Document processing, push authentication, and recovery](docs/document-processing.md)
 - [Cloud Storage adapters, signed URLs, and configuration](docs/cloud-storage.md)
+- [Notification consumption, deduplication, and validation](docs/notification-processing.md)
+- [Local startup, emulators, and smoke check](docs/local-environment.md)
+- [Test layers, recovery regressions, and commands](docs/testing.md)
 - [Phase roadmap](docs/roadmap.md)
 - [Infrastructure ownership](infrastructure/README.md)
 

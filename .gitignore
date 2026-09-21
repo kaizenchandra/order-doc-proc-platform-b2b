@@ -47,3 +47,6 @@ crash.log
 *.tfvars
 !*.example.tfvars
 # Commit .terraform.lock.hcl for each environment when providers are introduced.
+
+# Local helper bytecode
+/scripts/local/__pycache__/

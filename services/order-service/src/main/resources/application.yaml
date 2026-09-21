@@ -1,6 +1,8 @@
 spring:
   application:
     name: order-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   datasource:
     # No embedded database or local credentials as a production fallback.
     url: ${DB_URL}
@@ -44,3 +46,24 @@ app:
     requests-topic: ${DOCUMENT_REQUESTS_TOPIC:document-requests}
     results-subscription: ${ORDER_RESULTS_SUBSCRIPTION:order-document-results}
     report-bucket: ${REPORT_BUCKET:}
+
+server:
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
+        add-additional-paths: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db

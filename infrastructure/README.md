@@ -1,6 +1,7 @@
 # Infrastructure ownership
 
-Directories reserve the agreed structure; they are not deployable yet.
+`local/` contains the local service/support Dockerfiles and dependency pin, used by the root Compose file.
+See [local environment](../docs/local-environment.md). Cloud directories reserve the agreed structure; they are not deployable yet.
 
 - `terraform/environments/{dev,staging,prod}`: separate root configurations and state boundaries (Phase 13). Never share
   production state with development.

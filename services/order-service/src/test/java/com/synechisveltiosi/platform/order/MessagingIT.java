@@ -367,4 +367,82 @@ class MessagingIT {
         assertEquals(0, inboxCount());
         assertEquals(DocumentStatus.QUEUED, reload(doc).status());
     }
+    @Test
+    void realBrokerRedeliversAfterRollbackAndFansOutToIndependentSubscription() throws Exception {
+        try (var emulator = new org.testcontainers.containers.GenericContainer<>(
+                "gcr.io/google.com/cloudsdktool/google-cloud-cli:548.0.0-emulators")
+                .withExposedPorts(8085)
+                .withCommand("gcloud", "beta", "emulators", "pubsub", "start", "--project=transport-test", "--host-port=0.0.0.0:8085", "--quiet")
+                .waitingFor(org.testcontainers.containers.wait.strategy.Wait.forListeningPort())
+                .withStartupTimeout(java.time.Duration.ofSeconds(90))) {
+            emulator.start();
+            String endpoint = emulator.getHost() + ":" + emulator.getMappedPort(8085);
+            var channel = io.grpc.ManagedChannelBuilder.forTarget(endpoint).usePlaintext().build();
+            var provider = com.google.api.gax.rpc.FixedTransportChannelProvider.create(
+                    com.google.api.gax.grpc.GrpcTransportChannel.create(channel));
+            var credentials = com.google.api.gax.core.NoCredentialsProvider.create();
+            var topicSettings = com.google.cloud.pubsub.v1.TopicAdminSettings.newBuilder()
+                    .setTransportChannelProvider(provider).setCredentialsProvider(credentials).build();
+            var subscriptionSettings = com.google.cloud.pubsub.v1.SubscriptionAdminSettings.newBuilder()
+                    .setTransportChannelProvider(provider).setCredentialsProvider(credentials).build();
+            try (var topics = com.google.cloud.pubsub.v1.TopicAdminClient.create(topicSettings);
+                 var subscriptions = com.google.cloud.pubsub.v1.SubscriptionAdminClient.create(subscriptionSettings)) {
+                var topic = com.google.pubsub.v1.TopicName.of("transport-test", "physical-requests");
+                topics.createTopic(topic);
+                topics.createTopic(com.google.pubsub.v1.TopicName.of("transport-test", "physical-orders"));
+                for (String name : new String[]{"order-results", "audit-results"})
+                    subscriptions.createSubscription(com.google.pubsub.v1.Subscription.newBuilder()
+                            .setName("projects/transport-test/subscriptions/" + name).setTopic(topic.toString())
+                            .setAckDeadlineSeconds(10).build());
+                var transportSettings = new MessagingProperties(true, "transport-test", endpoint, "physical-orders",
+                        "physical-requests", "order-results", "reports", 90, 20);
+                var doc = queued();
+                var event = result(doc, doc.processingRequestId(), true);
+                var rejected = new CountDownLatch(1);
+                var accepted = new CountDownLatch(1);
+                var attempts = new AtomicInteger();
+                var observing = new ResultReceiver(codec, handler) {
+                    @Override
+                    public void receive(byte[] bytes, java.util.Map<String, String> attributes, Acknowledgement acknowledgement) {
+                        attempts.incrementAndGet();
+                        super.receive(bytes, attributes, new Acknowledgement() {
+                            public void ack() { acknowledgement.ack(); accepted.countDown(); }
+                            public void nack() { acknowledgement.nack(); rejected.countDown(); }
+                        });
+                    }
+                };
+                jdbc.execute("alter table order_documents add constraint test_broker_failure check (status <> 'PROCESSED')");
+                try (var transport = new com.synechisveltiosi.platform.order.adapter.messaging.PubSubTransport(transportSettings)) {
+                    var subscriber = transport.subscriber(observing);
+                    try {
+                        subscriber.startAsync().awaitRunning(20, TimeUnit.SECONDS);
+                        transport.publish("document-requests", codec.encode(event), java.util.Map.of("eventId", event.eventId().toString()));
+                        assertTrue(rejected.await(20, TimeUnit.SECONDS), "Broker delivery must be NACKed after DB failure");
+                        assertEquals(0, inboxCount());
+                        assertEquals(DocumentStatus.QUEUED, reload(doc).status());
+                        jdbc.execute("alter table order_documents drop constraint test_broker_failure");
+                        assertTrue(accepted.await(30, TimeUnit.SECONDS), "Same broker message must recover without republishing");
+                        assertTrue(attempts.get() >= 2);
+                        assertEquals(DocumentStatus.PROCESSED, reload(doc).status());
+                        assertEquals(1, inboxCount());
+                        assertEquals(1L, reload(doc).version());
+                        // The order subscriber's ACK cannot consume the independent audit copy.
+                        var copy = subscriptions.pull(com.google.pubsub.v1.PullRequest.newBuilder()
+                                .setSubscription("projects/transport-test/subscriptions/audit-results").setMaxMessages(1).build());
+                        assertEquals(1, copy.getReceivedMessagesCount());
+                        var message = copy.getReceivedMessages(0);
+                        assertEquals(event, codec.decode(message.getMessage().getData().toByteArray()));
+                        assertEquals(event.eventId().toString(), message.getMessage().getAttributesOrThrow("eventId"));
+                        subscriptions.acknowledge("projects/transport-test/subscriptions/audit-results", java.util.List.of(message.getAckId()));
+                    } finally {
+                        subscriber.stopAsync().awaitTerminated(20, TimeUnit.SECONDS);
+                    }
+                } finally {
+                    jdbc.execute("alter table order_documents drop constraint if exists test_broker_failure");
+                }
+            } finally {
+                channel.shutdownNow().awaitTermination(10, TimeUnit.SECONDS);
+            }
+        }
+    }
 }

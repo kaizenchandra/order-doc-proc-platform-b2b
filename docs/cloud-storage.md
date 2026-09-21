@@ -20,7 +20,8 @@ are independent; document processing needs both enabled for successful delivery.
 
 When disabled, existing fallback ports return 503. Enabling storage requires nonempty, distinct bucket settings;
 order-service additionally requires the signer identity. The applications never install an in-memory production fallback
-or silently redirect to a local emulator. Phase 9 will provide the local environment.
+or silently redirect to a local emulator. Phase 9 adds explicit `local` profile adapters; see the
+[local environment guide](local-environment.md).
 
 HTTP storage clients configure a 3-second connection timeout, 10-second read timeout, and at most three attempts within
 a 20-second SDK retry budget. These are per-operation limits, not a deadline for the entire multi-operation workflow.

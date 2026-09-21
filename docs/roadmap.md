@@ -9,9 +9,9 @@ Work stops after each phase until the user replies `NEXT`.
 5. **Pub/Sub & Reliable Messaging** — implemented; see [contracts, recovery, and validation](messaging.md)
 6. **document-service** — implemented; see [processing, security, and recovery](document-processing.md)
 7. **Cloud Storage** — implemented; see [adapters, signing, and validation](cloud-storage.md)
-8. **notification-service** — pending
-9. **Local Environment** — pending
-10. **Testing** — pending
+8. **notification-service** — implemented and integration-tested; see [consumer contract](notification-processing.md)
+9. **Local Environment** — implemented and smoke-tested; see [startup and validation](local-environment.md)
+10. **Testing** — implemented; see [layers, failure coverage, and validation](testing.md)
 11. **GKE** — pending
 12. **Cloud Run** — pending
 13. **Terraform** — pending
@@ -22,4 +22,4 @@ Work stops after each phase until the user replies `NEXT`.
 18. **Architecture Review** — pending
 19. **Interview Preparation** — pending
 
-Next: Phase 8 — notification-service: authenticated event consumption, inbox deduplication, and durable audit/notification intent.
+Next: Phase 11 — GKE.

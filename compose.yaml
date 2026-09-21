@@ -1,0 +1,145 @@
+name: order-platform-local
+
+x-service: &service
+  restart: unless-stopped
+  init: true
+  stop_grace_period: 30s
+  environment: &common-env
+    SPRING_PROFILES_ACTIVE: local
+    JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
+  networks: [local]
+
+x-push-env: &push-env
+  PUSH_ISSUER: http://localhost:9000
+  PUSH_JWK_SET_URI: http://support:9000/jwks
+  PUSH_SERVICE_ACCOUNT_EMAIL: local-push@local-platform.invalid
+
+services:
+  order-db:
+    image: postgres:17.6
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: local-orders-only
+    ports: ["127.0.0.1:5433:5432"]
+    volumes: ["order-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U orders -d orders"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks: [local]
+
+  notification-db:
+    image: postgres:17.6
+    environment:
+      POSTGRES_DB: notifications
+      POSTGRES_USER: notifications
+      POSTGRES_PASSWORD: local-notifications-only
+    ports: ["127.0.0.1:5434:5432"]
+    volumes: ["notification-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U notifications -d notifications"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks: [local]
+
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:548.0.0-emulators
+    command: [gcloud, beta, emulators, pubsub, start, --project=local-platform, "--host-port=0.0.0.0:8085", --quiet]
+    ports: ["127.0.0.1:8085:8085"]
+    networks: [local]
+
+  gcs:
+    image: fsouza/fake-gcs-server:1.54.0
+    command: [-scheme, http, -port, "4443", -public-host, "localhost:4443", -external-url, "http://gcs:4443", -backend, filesystem, -filesystem-root, /storage, -log-level, warn]
+    ports: ["127.0.0.1:4443:4443"]
+    volumes: ["gcs-data:/storage"]
+    networks: [local]
+
+  support:
+    build:
+      context: .
+      dockerfile: infrastructure/local/Dockerfile.support
+    ports: ["127.0.0.1:9000:9000"]
+    depends_on: [pubsub, gcs]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:9000/health', timeout=2)"]
+      interval: 3s
+      timeout: 4s
+      retries: 40
+    networks: [local]
+
+  order-service:
+    <<: *service
+    build:
+      context: .
+      dockerfile: infrastructure/local/Dockerfile.service
+      args: {SERVICE: order-service}
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      order-db: {condition: service_healthy}
+      support: {condition: service_healthy}
+    environment:
+      <<: *common-env
+      DB_URL: jdbc:postgresql://order-db:5432/orders
+      DB_USERNAME: orders
+      DB_PASSWORD: local-orders-only
+      AUTH_ISSUER: http://localhost:9000
+      AUTH_JWK_SET_URI: http://support:9000/jwks
+      AUTH_AUDIENCE: local-orders
+      STORAGE_ENABLED: "true"
+      UPLOAD_BUCKET: local-uploads
+      REPORT_BUCKET: local-reports
+      LOCAL_GCS_ENDPOINT: http://gcs:4443
+      LOCAL_GCS_PUBLIC_ENDPOINT: http://localhost:4443
+      MESSAGING_ENABLED: "true"
+      PUBSUB_PROJECT_ID: local-platform
+      PUBSUB_EMULATOR_HOST: pubsub:8085
+
+  document-service:
+    <<: *service
+    build:
+      context: .
+      dockerfile: infrastructure/local/Dockerfile.service
+      args: {SERVICE: document-service}
+    ports: ["127.0.0.1:8081:8080"]
+    depends_on:
+      support: {condition: service_healthy}
+    environment:
+      <<: [*common-env, *push-env]
+      PUSH_AUDIENCE: local-documents
+      DOCUMENT_REQUESTS_SUBSCRIPTION: projects/local-platform/subscriptions/document-requests
+      STORAGE_ENABLED: "true"
+      UPLOAD_BUCKET: local-uploads
+      REPORT_BUCKET: local-reports
+      LOCAL_GCS_ENDPOINT: http://gcs:4443
+      MESSAGING_ENABLED: "true"
+      PUBSUB_PROJECT_ID: local-platform
+      PUBSUB_EMULATOR_HOST: pubsub:8085
+
+  notification-service:
+    <<: *service
+    build:
+      context: .
+      dockerfile: infrastructure/local/Dockerfile.service
+      args: {SERVICE: notification-service}
+    ports: ["127.0.0.1:8082:8080"]
+    depends_on:
+      notification-db: {condition: service_healthy}
+      support: {condition: service_healthy}
+    environment:
+      <<: [*common-env, *push-env]
+      DB_URL: jdbc:postgresql://notification-db:5432/notifications
+      DB_USERNAME: notifications
+      DB_PASSWORD: local-notifications-only
+      PUSH_AUDIENCE: local-notifications
+      NOTIFICATION_EVENTS_SUBSCRIPTION: projects/local-platform/subscriptions/notification-orders,projects/local-platform/subscriptions/notification-results
+
+networks:
+  local:
+volumes:
+  order-data:
+  notification-data:
+  gcs-data:

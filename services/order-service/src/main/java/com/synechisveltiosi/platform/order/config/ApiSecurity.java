@@ -54,6 +54,7 @@ public class ApiSecurity {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(RequestCacheConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/livez", "/readyz").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/orders/**").hasAuthority("SCOPE_orders:read")
                         .requestMatchers(HttpMethod.POST, "/api/v1/orders", "/api/v1/orders/**").hasAuthority("SCOPE_orders:write")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/orders/*/status").hasAuthority("SCOPE_orders:write")

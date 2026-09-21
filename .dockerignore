@@ -1,0 +1,12 @@
+**
+!services/
+!services/*/
+!services/*/target/
+!services/*/target/*-SNAPSHOT.jar
+!infrastructure/
+!infrastructure/local/
+!infrastructure/local/Dockerfile.*
+!infrastructure/local/requirements.txt
+!scripts/
+!scripts/local/
+!scripts/local/*.py

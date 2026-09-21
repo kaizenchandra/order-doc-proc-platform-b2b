@@ -456,4 +456,24 @@ class OrderApiIT {
                     + object.objectName() + "?generation=" + object.generation()), "GET", Map.of(), expires);
         }
     }
+    @Test
+    void probesExposeOnlyStatusAndReadinessTracksAvailabilityWithoutFailingLiveness() throws Exception {
+        for (String path : List.of("/livez", "/readyz")) {
+            var response = request("GET", path, null, null, null);
+            assertEquals(200, response.statusCode());
+            assertEquals("{\"status\":\"UP\"}", response.body());
+        }
+        for (String path : List.of("/actuator", "/actuator/health", "/actuator/env", "/actuator/metrics"))
+            assertEquals(401, request("GET", path, null, null, null).statusCode());
+        org.springframework.boot.availability.AvailabilityChangeEvent.publish(context,
+                org.springframework.boot.availability.ReadinessState.REFUSING_TRAFFIC);
+        try {
+            assertEquals(503, request("GET", "/readyz", null, null, null).statusCode());
+            assertEquals(200, request("GET", "/livez", null, null, null).statusCode());
+            assertEquals(401, request("GET", "/api/v1/orders/" + UUID.randomUUID(), null, null, null).statusCode());
+        } finally {
+            org.springframework.boot.availability.AvailabilityChangeEvent.publish(context,
+                    org.springframework.boot.availability.ReadinessState.ACCEPTING_TRAFFIC);
+        }
+    }
 }

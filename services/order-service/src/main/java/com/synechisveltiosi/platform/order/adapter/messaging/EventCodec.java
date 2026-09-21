@@ -16,7 +16,9 @@ public class EventCodec {
     // Additive fields are tolerated within v1; polymorphic Java class names are never accepted from wire data.
     private final ObjectMapper json = JsonMapper.builder().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .enable(tools.jackson.core.StreamReadFeature.STRICT_DUPLICATE_DETECTION)
-            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .enable(tools.jackson.databind.cfg.JsonNodeFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(tools.jackson.databind.cfg.JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES).build();
 
     public byte[] encode(Events.Envelope event) {
         byte[] bytes = json.writeValueAsBytes(event);

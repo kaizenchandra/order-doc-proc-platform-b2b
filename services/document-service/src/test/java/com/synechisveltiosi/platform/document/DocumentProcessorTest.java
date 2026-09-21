@@ -152,4 +152,38 @@ class DocumentProcessorTest {
         assertEquals("DOCUMENT_TOO_LARGE", inspector.inspect(endless, "application/pdf").failureCode());
         assertEquals(PdfMetadataProcessor.MAX_BYTES + 1, count.get());
     }
+    @Test
+    void midStreamFailureClosesInputAndLeavesNoTerminalReport() throws Exception {
+        var fixture = new ProcessingFixture();
+        var closed = new java.util.concurrent.atomic.AtomicBoolean();
+        DocumentObjects failing = (bucket, name, generation) -> new DocumentObjects.Input(new InputStream() {
+            private int reads;
+            public int read() throws IOException {
+                if (++reads > 16) throw new IOException("connection lost mid-stream");
+                return 'a';
+            }
+            public void close() { closed.set(true); }
+        }, "application/pdf");
+        var processor = new DocumentProcessor(failing, fixture, fixture, Clock.systemUTC(), "uploads", "reports", "1");
+        var request = fixture.request();
+        assertThrows(IOException.class, () -> processor.process(request));
+        assertTrue(closed.get());
+        assertTrue(fixture.reports.isEmpty());
+        assertTrue(fixture.published.isEmpty());
+        fixture.processor().process(request);
+        assertEquals("DocumentProcessed", fixture.published.getFirst().eventType());
+    }
+
+    @Test
+    void closeFailureMustNotCommitOrPublishAResult() {
+        var fixture = new ProcessingFixture();
+        DocumentObjects failing = (bucket, name, generation) -> new DocumentObjects.Input(
+                new ByteArrayInputStream(ProcessingFixture.PDF) {
+                    public void close() throws IOException { throw new IOException("read completion failed"); }
+                }, "application/pdf");
+        var processor = new DocumentProcessor(failing, fixture, fixture, Clock.systemUTC(), "uploads", "reports", "1");
+        assertThrows(IOException.class, () -> processor.process(fixture.request()));
+        assertTrue(fixture.reports.isEmpty());
+        assertTrue(fixture.published.isEmpty());
+    }
 }

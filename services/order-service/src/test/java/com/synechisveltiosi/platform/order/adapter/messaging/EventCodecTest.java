@@ -1,6 +1,5 @@
 package com.synechisveltiosi.platform.order.adapter.messaging;
 
-import com.synechisveltiosi.platform.commonobservability.TraceContext;
 import com.synechisveltiosi.platform.eventcontracts.Events;
 import org.junit.jupiter.api.Test;
 
@@ -39,16 +38,15 @@ class EventCodecTest {
     }
 
     @Test
-    void traceContextRejectsZeroIdsAndRestoresThreadState() {
-        String trace = "00-" + "a".repeat(32) + "-" + "b".repeat(16) + "-01";
-        assertFalse(TraceContext.valid("00-" + "0".repeat(32) + "-" + "b".repeat(16) + "-01"));
-        try (var ignored = TraceContext.open(trace)) {
-            assertEquals(trace, TraceContext.current());
-            try (var nested = TraceContext.open("bad")) {
-                assertNull(TraceContext.current());
-            }
-            assertEquals(trace, TraceContext.current());
+    void orderAmountsRetainExactPrecisionThroughOutboxAndWireDecoding() {
+        UUID order = UUID.randomUUID();
+        for (String amount : new String[]{"0.01", "12.00", "99999999999999999.99"}) {
+            var data = new Events.OrderCreated(order, UUID.randomUUID(), "CREATED", new java.math.BigDecimal(amount), "USD");
+            var event = new Events.Envelope(UUID.randomUUID(), "OrderCreated", 1, UUID.randomUUID(), order,
+                    UUID.randomUUID(), null, Instant.now(), "order-service", data);
+            assertEquals(event, codec.decode(codec.encode(event)));
+            String payload = new tools.jackson.databind.json.JsonMapper().writeValueAsString(data);
+            assertEquals(data, codec.payload("OrderCreated", payload));
         }
-        assertNull(TraceContext.current());
     }
 }

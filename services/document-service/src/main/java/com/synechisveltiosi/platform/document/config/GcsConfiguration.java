@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 
 @Configuration(proxyBeanMethods = false)
+@org.springframework.context.annotation.Profile("!local")
 @ConditionalOnProperty(name = "app.storage.enabled", havingValue = "true")
 public class GcsConfiguration {
     @Bean(destroyMethod = "close")

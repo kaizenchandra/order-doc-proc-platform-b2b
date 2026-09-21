@@ -1,0 +1,5 @@
+# Activated only by SPRING_PROFILES_ACTIVE=local. Compose supplies internal endpoints.
+app:
+  local:
+    gcs-endpoint: ${LOCAL_GCS_ENDPOINT:http://localhost:4443}
+    gcs-public-endpoint: ${LOCAL_GCS_PUBLIC_ENDPOINT:http://localhost:4443}

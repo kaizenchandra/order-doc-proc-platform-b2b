@@ -25,3 +25,11 @@ spring:
   sql:
     init:
       mode: never
+
+app:
+  push:
+    issuer: ${PUSH_ISSUER:https://accounts.google.com}
+    jwk-set-uri: ${PUSH_JWK_SET_URI:https://www.googleapis.com/oauth2/v3/certs}
+    audience: ${PUSH_AUDIENCE:}
+    service-account-email: ${PUSH_SERVICE_ACCOUNT_EMAIL:}
+    subscription: ${NOTIFICATION_EVENTS_SUBSCRIPTION:}
