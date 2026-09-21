@@ -15,7 +15,7 @@ and no live project plan has been run in this phase.
 | Private PostgreSQL 17 instance, orders/notifications databases, backups/PITR | Database login creation, passwords, SQL grants, Flyway migrations |
 | Artifact Registry repository and node pull grant | Build, scan, publish, and select immutable images |
 | Private upload/report buckets and scoped object grants | Retention/replay policy and controlled cleanup |
-| Three event topics, four independent subscriptions, per-consumer DLQs and retained inspection subscriptions | DLQ alerting and replay operations (Phase 15) |
+| Three event topics, four independent subscriptions, per-consumer DLQs, retained inspection subscriptions, log metrics and alerts | Verified notification channels and controlled replay operations |
 | Cloud Run v2 services, runtime and push identities, invoker/token grants | Cloud acceptance tests and measured capacity tuning |
 | Secret Manager containers and notification accessor grant | Secret payload versions and rotation |
 | Global API address, optional managed certificate and optional DNS A record | Existing authoritative DNS zone and Helm-managed HTTPS load balancer |
@@ -200,5 +200,13 @@ TERRAFORM="$PWD/target/terraform-tools/terraform" ./scripts/terraform/validate.s
 ```
 
 The script checks formatting, initializes with `-backend=false`, validates bootstrap, all three roots and the module,
-and runs seven mock scenarios. Initialization can download providers but does not access GCP state. The activation test
+and runs nine mock scenarios. Initialization can download providers but does not access GCP state. The activation test
 performs only a mocked apply; every Google provider is mocked. See [Terraform mock providers](https://developer.hashicorp.com/terraform/language/tests/mocking).
+
+Validation completed on 2026-09-22: recursive formatting passed; bootstrap, dev, staging, prod, and the shared module
+all passed provider schema validation; all seven mock scenarios passed with no skips. Shell syntax and repository
+whitespace checks passed. No live cloud plan, cloud apply, or cloud acceptance test was performed.
+
+Phase 14 narrows signing, object access, and push-token grants; see [the current IAM contract](security.md).
+
+Phase 15 adds operational metrics and thirteen alert policies. Supply existing verified `notification_channels`; an empty list creates console incidents only. See [operations](operations.md).

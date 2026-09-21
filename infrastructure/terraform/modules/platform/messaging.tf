@@ -54,7 +54,7 @@ resource "google_pubsub_topic_iam_member" "dead_letter_publisher" {
 resource "google_service_account_iam_member" "push_token" {
   for_each           = toset(["document", "notification"])
   service_account_id = google_service_account.identity["${each.key}-push"].name
-  role               = "roles/iam.serviceAccountTokenCreator"
+  role               = "roles/iam.serviceAccountOpenIdTokenCreator"
   member             = "serviceAccount:${google_project_service_identity.agent["pubsub.googleapis.com"].email}"
 }
 resource "google_pubsub_subscription" "consumer" {

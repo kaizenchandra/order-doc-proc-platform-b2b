@@ -137,6 +137,18 @@ class MessagingIT {
     }
 
     @Test
+    void queueSamplingTracksPendingAgeAndDoesNotTreatPublishedEventsAsBacklog() {
+        var monitor = new com.synechisveltiosi.platform.order.config.QueueMonitor(jdbc.getDataSource());
+        assertEquals(0, monitor.snapshot().outboxOldestSeconds());
+        var event = pending();
+        assertTrue(monitor.snapshot().outboxOldestSeconds() > 300);
+        var lease = outbox.claim().orElseThrow();
+        assertTrue(outbox.published(lease));
+        assertEquals(0, monitor.snapshot().outboxOldestSeconds());
+        assertEquals(0, monitor.snapshot().queuedOldestSeconds());
+    }
+
+    @Test
     void relayPublishesOutsideTransactionAndMarksOnlyAcceptedMessages() {
         var event = pending();
         var calls = new AtomicInteger();

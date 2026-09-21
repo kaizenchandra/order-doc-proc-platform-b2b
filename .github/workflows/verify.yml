@@ -1,0 +1,69 @@
+name: Verify
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  application:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Unit, integration, and local workflow regressions
+        run: ./scripts/local/test.sh
+      - name: Test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-reports
+          path: |
+            **/target/surefire-reports/*.xml
+            **/target/failsafe-reports/*.xml
+          retention-days: 7
+      - name: Verified executable jars
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: service-jars
+          path: services/*/target/*-SNAPSHOT.jar
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove disposable CI containers and volumes
+        if: always()
+        run: docker compose down -v --remove-orphans
+  infrastructure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: 1.16.3
+          terraform_wrapper: false
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        with:
+          version: v3.19.0
+      - name: Terraform schemas and mocked plans
+        run: ./scripts/terraform/validate.sh
+      - name: Helm and workflow contracts
+        run: |
+          python3 -m venv target/ci-python
+          target/ci-python/bin/pip install -r scripts/kubernetes/requirements.txt
+          target/ci-python/bin/python scripts/kubernetes/test_chart.py
+          target/ci-python/bin/python -m unittest discover -s scripts/ci -p 'test_*.py'
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          "$(go env GOPATH)/bin/actionlint"

@@ -17,6 +17,7 @@ module "platform" {
   database_prepared             = var.database_prepared
   api_hostname                  = var.api_hostname
   dns_managed_zone              = var.dns_managed_zone
+  notification_channels         = var.notification_channels
 }
 output "deployment" { value = module.platform.deployment }
 output "helm_platform_values" { value = module.platform.helm_platform_values }

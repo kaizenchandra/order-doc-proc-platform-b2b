@@ -53,3 +53,9 @@ crash.log
 
 # Kubernetes validation helper bytecode
 /scripts/kubernetes/__pycache__/
+
+# Ephemeral GitHub WIF files and CI helper bytecode
+gha-creds-*.json
+/scripts/ci/__pycache__/
+*.tfvars.json
+!*.example.tfvars.json

@@ -156,6 +156,52 @@ class OrderApiIT {
     }
 
     @Test
+    void missingRequiredClaimsFutureTokensAndUnsignedTokensAreRejected() throws Exception {
+        var valid = SignedJWT.parse(token(UUID.randomUUID()));
+        var rejected = new java.util.ArrayList<String>();
+        rejected.add(new com.nimbusds.jwt.PlainJWT(valid.getJWTClaimsSet()).serialize());
+        for (String missing : new String[]{"exp", "sub"}) {
+            var claims = new java.util.HashMap<String, Object>(valid.getJWTClaimsSet().toJSONObject());
+            claims.remove(missing);
+            var jwt = new SignedJWT(valid.getHeader(), JWTClaimsSet.parse(claims));
+            jwt.sign(new RSASSASigner(signingKey));
+            rejected.add(jwt.serialize());
+        }
+        var future = new SignedJWT(valid.getHeader(), new JWTClaimsSet.Builder(valid.getJWTClaimsSet())
+                .notBeforeTime(Date.from(Instant.now().plusSeconds(300))).build());
+        future.sign(new RSASSASigner(signingKey));
+        rejected.add(future.serialize());
+        var hmac = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), valid.getJWTClaimsSet());
+        hmac.sign(new com.nimbusds.jose.crypto.MACSigner(new byte[32]));
+        rejected.add(hmac.serialize());
+        for (String invalid : rejected) {
+            problem(401, request("POST", "/api/v1/orders", invalid, "invalid-claims", orderInput()));
+        }
+    }
+
+    @Test
+    void metadataLimitRejectsKnownAndChunkedBodiesBeforeAnyDatabaseEffect() throws Exception {
+        var tenant = UUID.randomUUID();
+        var bearer = token(tenant);
+        int limit = com.synechisveltiosi.platform.order.api.RequestBodyLimitFilter.MAX_BYTES;
+        String jsonBody = json.writeValueAsString(orderInput());
+        String oversized = jsonBody + " ".repeat(limit + 1 - jsonBody.length());
+        problem(413, request("POST", "/api/v1/orders", bearer, "large-known", oversized));
+        var chunked = HttpRequest.newBuilder(URI.create(base + "/api/v1/orders"))
+                .header("Authorization", "Bearer " + bearer).header("Idempotency-Key", "large-chunked")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofInputStream(() -> new java.io.ByteArrayInputStream(
+                        oversized.getBytes(StandardCharsets.UTF_8)))).build();
+        problem(413, client.send(chunked, HttpResponse.BodyHandlers.ofString()));
+        // Authentication precedes buffering, even for oversized bodies.
+        problem(401, request("POST", "/api/v1/orders", null, "large-anonymous", oversized));
+        assertEquals(0, jdbc.queryForObject("select count(*) from orders where tenant_id = ?", Integer.class, tenant));
+        assertEquals(0, jdbc.queryForObject("select count(*) from outbox_events where tenant_id = ?", Integer.class, tenant));
+        String boundary = jsonBody + " ".repeat(limit - jsonBody.length());
+        assertEquals(201, request("POST", "/api/v1/orders", bearer, "exact-boundary", boundary).statusCode());
+    }
+
+    @Test
     void creationReplaysItsOriginalResponseAndRejectsChangedInput() throws Exception {
         var tenant = UUID.randomUUID();
         var token = token(tenant);

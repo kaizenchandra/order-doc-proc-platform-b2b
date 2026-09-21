@@ -1,6 +1,7 @@
 package com.synechisveltiosi.platform.notification.api;
 
 import com.synechisveltiosi.platform.commonobservability.TraceContext;
+import com.synechisveltiosi.platform.commonobservability.OperationObservation;
 import com.synechisveltiosi.platform.notification.application.NotificationHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -34,8 +35,10 @@ public class NotificationPushController {
             byte[] body = request.getInputStream().readNBytes(PushCodec.MAX_PUSH_BYTES + 1);
             if (body.length > PushCodec.MAX_PUSH_BYTES) return ResponseEntity.status(413).build();
             var delivery = codec.decode(body, subscription);
-            try (var ignored = TraceContext.open(delivery.traceparent())) {
+            try (var ignored = TraceContext.open(delivery.traceparent());
+                 var observation = new OperationObservation(OperationObservation.Operation.NOTIFICATION_PUSH)) {
                 processor.handle(delivery.event());
+                observation.succeeded();
             }
             return ResponseEntity.noContent().build();
         } catch (Exception failure) {

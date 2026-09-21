@@ -16,11 +16,11 @@ Work stops after each phase until the user replies `NEXT`.
     deployment performed
 12. **Cloud Run** — runtime support and reference deployment contracts implemented; see [runbook](cloud-run.md); no cloud deployment performed
 13. **Terraform** — platform, separate environment roots, state bootstrap, and mock tests implemented; see [runbook](terraform.md); no cloud apply performed
-14. **Security** — pending
-15. **Resilience & Observability** — pending
+14. **Security** — request bounds, least-privilege IAM, and JWT regressions implemented; see [controls and validation](security.md)
+15. **Resilience & Observability** — structured delivery telemetry, queue sampling, worker readiness, alert policies, and recovery runbooks implemented; see [operations](operations.md)
 16. **CI/CD** — pending
 17. **Production Engineering** — pending
 18. **Architecture Review** — pending
 19. **Interview Preparation** — pending
 
-Next: Phase 14 — Security.
+Next: Phase 16 — CI/CD.

@@ -57,3 +57,13 @@ management:
           include: livenessState
         readiness:
           include: readinessState,db
+
+logging:
+  structured:
+    format:
+      console: logstash
+    json:
+      rename:
+        level: severity
+      add:
+        service: ${spring.application.name}

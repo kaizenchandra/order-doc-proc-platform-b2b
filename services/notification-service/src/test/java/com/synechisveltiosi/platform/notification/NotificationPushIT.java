@@ -97,6 +97,30 @@ class NotificationPushIT {
     }
 
     @Test
+    void missingRequiredClaimsFutureTokensAndUnsignedTokensAreRejected() throws Exception {
+        var valid = SignedJWT.parse(token());
+        var rejected = new java.util.ArrayList<String>();
+        rejected.add(new com.nimbusds.jwt.PlainJWT(valid.getJWTClaimsSet()).serialize());
+        for (String missing : new String[]{"exp", "sub"}) {
+            var claims = new java.util.HashMap<String, Object>(valid.getJWTClaimsSet().toJSONObject());
+            claims.remove(missing);
+            var jwt = new SignedJWT(valid.getHeader(), JWTClaimsSet.parse(claims));
+            jwt.sign(new RSASSASigner(signingKey));
+            rejected.add(jwt.serialize());
+        }
+        var future = new SignedJWT(valid.getHeader(), new JWTClaimsSet.Builder(valid.getJWTClaimsSet())
+                .notBeforeTime(Date.from(Instant.now().plusSeconds(300))).build());
+        future.sign(new RSASSASigner(signingKey));
+        rejected.add(future.serialize());
+        var hmac = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), valid.getJWTClaimsSet());
+        hmac.sign(new com.nimbusds.jose.crypto.MACSigner(new byte[32]));
+        rejected.add(hmac.serialize());
+        for (String invalid : rejected) {
+            assertEquals(401, post("{}", invalid));
+        }
+    }
+
+    @Test
     void probesExposeOnlyStatusAndDoNotExposeActuator() throws Exception {
         for (String path : new String[]{"/livez", "/readyz"}) {
             var response = client.send(HttpRequest.newBuilder(URI.create(base + path)).GET().build(),

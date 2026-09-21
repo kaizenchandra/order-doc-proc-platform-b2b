@@ -1,7 +1,7 @@
 package com.synechisveltiosi.platform.commonobservability;
 
 /**
- * W3C v00 traceparent propagation only; span creation/export is a later phase.
+ * W3C v00 propagation and structured-log correlation; does not create or export spans.
  */
 public final class TraceContext {
     private static final ThreadLocal<String> CURRENT = new ThreadLocal<>();
@@ -20,12 +20,28 @@ public final class TraceContext {
 
     public static Scope open(String value) {
         String previous = CURRENT.get();
+        String previousTrace = org.slf4j.MDC.get("trace_id");
+        String previousSpan = org.slf4j.MDC.get("span_id");
+        if (valid(value)) {
+            org.slf4j.MDC.put("trace_id", value.substring(3, 35));
+            org.slf4j.MDC.put("span_id", value.substring(36, 52));
+        } else {
+            org.slf4j.MDC.remove("trace_id");
+            org.slf4j.MDC.remove("span_id");
+        }
         if (valid(value)) CURRENT.set(value);
         else CURRENT.remove();
         return () -> {
+            restoreMdc("trace_id", previousTrace);
+            restoreMdc("span_id", previousSpan);
             if (previous == null) CURRENT.remove();
             else CURRENT.set(previous);
         };
+    }
+
+    private static void restoreMdc(String key, String value) {
+        if (value == null) org.slf4j.MDC.remove(key);
+        else org.slf4j.MDC.put(key, value);
     }
 
     public interface Scope extends AutoCloseable {

@@ -100,3 +100,7 @@ but are not a secret scanner.
 Cloud Run consumer images and reference deployment contracts are implemented; see the [Cloud Run runbook](docs/cloud-run.md).
 
 Terraform provisioning and environment/state separation: [Phase 13 runbook](docs/terraform.md).
+
+Security boundaries, least-privilege grants, and regression evidence: [Phase 14](docs/security.md).
+
+Operational telemetry, alert policies, and recovery procedures: [Phase 15](docs/operations.md).

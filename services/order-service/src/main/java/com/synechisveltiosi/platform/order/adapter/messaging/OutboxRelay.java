@@ -2,6 +2,8 @@ package com.synechisveltiosi.platform.order.adapter.messaging;
 
 import com.synechisveltiosi.platform.order.adapter.persistence.OutboxStore;
 import com.synechisveltiosi.platform.order.config.MessagingProperties;
+import com.synechisveltiosi.platform.commonobservability.OperationObservation;
+import com.synechisveltiosi.platform.commonobservability.TraceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +34,8 @@ public class OutboxRelay {
             if (candidate.isEmpty()) break;
             var lease = candidate.get();
             attempted++;
-            try {
+            try (var trace = TraceContext.open(lease.traceparent());
+                 var observation = new OperationObservation(OperationObservation.Operation.OUTBOX_PUBLISH)) {
                 var event = lease.envelope(codec);
                 String expected = event.eventType().equals("DocumentProcessingRequested") ? "document-requests" : "order-events";
                 if (!event.source().equals("order-service") || !expected.equals(lease.destination()))
@@ -43,6 +46,7 @@ public class OutboxRelay {
                 if (com.synechisveltiosi.platform.commonobservability.TraceContext.valid(lease.traceparent()))
                     attributes.put("traceparent", lease.traceparent());
                 publisher.publish(lease.destination(), codec.encode(event), attributes);
+                observation.succeeded();
             } catch (Exception failure) {
                 int cap = Math.min(300, 1 << Math.min(lease.attempt(), 9));
                 store.retry(lease, ThreadLocalRandom.current().nextInt(Math.max(1, cap / 2), cap + 1),

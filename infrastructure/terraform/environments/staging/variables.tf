@@ -61,3 +61,13 @@ variable "dns_managed_zone" {
     error_message = "A DNS zone requires an API hostname."
   }
 }
+
+variable "notification_channels" {
+  description = "Existing verified Cloud Monitoring channel resource names; empty creates console incidents only."
+  type        = list(string)
+  default     = []
+  validation {
+    condition     = alltrue([for channel in var.notification_channels : can(regex("^projects/[^/]+/notificationChannels/[^/]+$", channel))])
+    error_message = "Use full Cloud Monitoring notification channel resource names."
+  }
+}

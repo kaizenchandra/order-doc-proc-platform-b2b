@@ -11,3 +11,5 @@ database_prepared = false
 # notification_password_version = "1"
 # api_hostname = "orders.example.com"
 # dns_managed_zone = "existing-zone"
+
+# notification_channels = ["projects/PROJECT/notificationChannels/CHANNEL_ID"]

@@ -1,6 +1,7 @@
 package com.synechisveltiosi.platform.document.api;
 
 import com.synechisveltiosi.platform.commonobservability.TraceContext;
+import com.synechisveltiosi.platform.commonobservability.OperationObservation;
 import com.synechisveltiosi.platform.document.application.DocumentProcessor;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -33,8 +34,10 @@ public class DocumentPushController {
             byte[] body = request.getInputStream().readNBytes(PushCodec.MAX_PUSH_BYTES + 1);
             if (body.length > PushCodec.MAX_PUSH_BYTES) return ResponseEntity.status(413).build();
             var delivery = codec.decode(body, subscription);
-            try (var ignored = TraceContext.open(delivery.traceparent())) {
+            try (var ignored = TraceContext.open(delivery.traceparent());
+                 var observation = new OperationObservation(OperationObservation.Operation.DOCUMENT_PUSH)) {
                 processor.process(delivery.event());
+                observation.succeeded();
             }
             return ResponseEntity.noContent().build();
         } catch (InterruptedException interrupted) {

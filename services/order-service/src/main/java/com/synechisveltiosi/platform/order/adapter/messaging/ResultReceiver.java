@@ -1,6 +1,7 @@
 package com.synechisveltiosi.platform.order.adapter.messaging;
 
 import com.synechisveltiosi.platform.order.application.DocumentResultHandler;
+import com.synechisveltiosi.platform.commonobservability.OperationObservation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -21,8 +22,10 @@ public class ResultReceiver {
     }
 
     public void receive(byte[] bytes, java.util.Map<String, String> attributes, Acknowledgement acknowledgement) {
-        try (var ignored = com.synechisveltiosi.platform.commonobservability.TraceContext.open(attributes.get("traceparent"))) {
+        try (var ignored = com.synechisveltiosi.platform.commonobservability.TraceContext.open(attributes.get("traceparent"));
+             var observation = new OperationObservation(OperationObservation.Operation.ORDER_RESULT)) {
             handler.handle(codec.decode(bytes));
+            observation.succeeded();
         } catch (RuntimeException failure) {
             // No ACK for malformed/unsupported events: subscription retry/DLQ policy owns bounded delivery.
             log.warn("Result rejected or transaction failed; failureType={}", failure.getClass().getSimpleName());

@@ -50,7 +50,9 @@ public class ApiSecurity {
     @Bean
     SecurityFilterChain orderSecurityFilterChain(HttpSecurity http) throws Exception {
         // Bearer tokens only; no cookie/session authentication, so CSRF tokens are not used.
-        http.csrf(AbstractHttpConfigurer::disable)
+        http.addFilterAfter(new com.synechisveltiosi.platform.order.api.RequestBodyLimitFilter(),
+                        org.springframework.security.web.access.intercept.AuthorizationFilter.class)
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(RequestCacheConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth

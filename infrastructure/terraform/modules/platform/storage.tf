@@ -14,12 +14,12 @@ resource "google_storage_bucket" "documents" {
 }
 locals {
   object_grants = {
-    order_upload_read      = { bucket = "uploads", identity = "order-runtime", role = "roles/storage.objectViewer" }
-    signer_upload          = { bucket = "uploads", identity = "storage-signer", role = "roles/storage.objectCreator" }
-    signer_report          = { bucket = "reports", identity = "storage-signer", role = "roles/storage.objectViewer" }
-    document_upload        = { bucket = "uploads", identity = "document-runtime", role = "roles/storage.objectViewer" }
-    document_report_read   = { bucket = "reports", identity = "document-runtime", role = "roles/storage.objectViewer" }
-    document_report_create = { bucket = "reports", identity = "document-runtime", role = "roles/storage.objectCreator" }
+    order_upload_read      = { bucket = "uploads", identity = "order-runtime", role = google_project_iam_custom_role.object_read.name }
+    signer_upload          = { bucket = "uploads", identity = "storage-signer", role = google_project_iam_custom_role.object_create.name }
+    signer_report          = { bucket = "reports", identity = "storage-signer", role = google_project_iam_custom_role.object_read.name }
+    document_upload        = { bucket = "uploads", identity = "document-runtime", role = google_project_iam_custom_role.object_read.name }
+    document_report_read   = { bucket = "reports", identity = "document-runtime", role = google_project_iam_custom_role.object_read.name }
+    document_report_create = { bucket = "reports", identity = "document-runtime", role = google_project_iam_custom_role.object_create.name }
   }
 }
 resource "google_storage_bucket_iam_member" "objects" {

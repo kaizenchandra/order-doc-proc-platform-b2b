@@ -57,7 +57,7 @@ resource "google_service_account_iam_member" "order_workload" {
 }
 resource "google_service_account_iam_member" "sign_blob" {
   service_account_id = google_service_account.identity["storage-signer"].name
-  role               = "roles/iam.serviceAccountTokenCreator"
+  role               = google_project_iam_custom_role.blob_signer.name
   member             = "serviceAccount:${google_service_account.identity["order-runtime"].email}"
 }
 resource "google_project_iam_member" "sql_client" {

@@ -36,13 +36,14 @@ public class PubSubConfiguration {
             private Subscriber subscriber;
             private ScheduledExecutorService scheduler;
             private volatile boolean running;
+            private java.util.concurrent.ScheduledFuture<?> relayTask;
 
             public void start() {
                 try {
                     subscriber = transport.subscriber(receiver);
                     subscriber.startAsync().awaitRunning(30, TimeUnit.SECONDS);
                     scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().name("outbox-relay").factory());
-                    scheduler.scheduleWithFixedDelay(() -> {
+                    relayTask = scheduler.scheduleWithFixedDelay(() -> {
                         try {
                             relay.poll();
                         } catch (RuntimeException failure) {
@@ -77,7 +78,8 @@ public class PubSubConfiguration {
             }
 
             public boolean isRunning() {
-                return running && subscriber != null && subscriber.isRunning();
+                return running && subscriber != null && subscriber.isRunning()
+                        && scheduler != null && !scheduler.isShutdown() && relayTask != null && !relayTask.isDone();
             }
         };
     }

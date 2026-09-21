@@ -1,5 +1,8 @@
 # No credentials or GCP calls: both providers are mocked for every run.
 mock_provider "google" {
+  mock_resource "google_project_iam_custom_role" {
+    defaults = { name = "projects/test-platform/roles/mockRole" }
+  }
   mock_resource "google_compute_network" {
     defaults = { id = "projects/test-platform/global/networks/orders-dev" }
   }
@@ -141,6 +144,27 @@ run "activated" {
     error_message = "Invoker grants must never use public principals."
   }
 }
+run "least_privilege" {
+  command = plan
+  assert {
+    condition = (
+      toset(google_project_iam_custom_role.blob_signer.permissions) == toset(["iam.serviceAccounts.signBlob"]) &&
+      toset(google_project_iam_custom_role.object_read.permissions) == toset(["storage.objects.get"]) &&
+      toset(google_project_iam_custom_role.object_create.permissions) == toset(["storage.objects.create"])
+    )
+    error_message = "Signing/object custom roles must not grow token, listing, deletion, or administration permissions."
+  }
+  assert {
+    condition = alltrue([for grant in google_service_account_iam_member.push_token :
+      grant.role == "roles/iam.serviceAccountOpenIdTokenCreator"
+    ])
+    error_message = "Pub/Sub needs only OIDC token creation, not general impersonation."
+  }
+  assert {
+    condition     = toset(keys(google_project_iam_member.sql_client)) == toset(["order-runtime", "notification-runtime"]) && length(google_secret_manager_secret_iam_member.notification_password) > 0
+    error_message = "Document and push identities must not gain SQL access."
+  }
+}
 run "production" {
   command = plan
   variables { environment = "prod" }
@@ -184,4 +208,16 @@ run "reject_unpinned_secret" {
     }
   }
   expect_failures = [var.notification_password_version]
+}
+
+run "monitoring_contract" {
+  command = plan
+  assert {
+    condition     = length(google_monitoring_alert_policy.subscription) == 8 && length(google_logging_metric.signal) == 4 && length(google_monitoring_alert_policy.signal) == 4 && google_monitoring_alert_policy.sampler_absent.conditions[0].condition_absent[0].duration == "300s"
+    error_message = "All consumers need backlog/DLQ coverage and SQL/application recovery signals."
+  }
+  assert {
+    condition     = toset([for label in google_logging_metric.operations.metric_descriptor[0].labels : label.key]) == toset(["operation", "outcome"])
+    error_message = "Do not introduce tenant/event/trace identifiers as metric labels."
+  }
 }

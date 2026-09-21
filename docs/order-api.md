@@ -198,3 +198,5 @@ bucket through deployment configuration.
 A retry-safe HTTP operation needs a durable request identity, input fingerprint, concurrency control, and an atomic
 response/business commit. Database transactions cannot make an external upload atomic; verify storage, then recheck
 local state before committing the processing request.
+
+Authenticated POST/PATCH metadata bodies are limited to 64 KiB, including chunked and trailing bytes. Oversized bodies return 413 before JSON parsing or database changes. Document bytes still upload directly to GCS. See [security controls](security.md).

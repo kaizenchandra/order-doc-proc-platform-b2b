@@ -35,6 +35,14 @@ resource "google_storage_bucket" "state" {
   public_access_prevention    = "enforced"
   force_destroy               = false
   versioning { enabled = true }
+  # Saved application plans are short-lived; this never matches Terraform state prefixes.
+  lifecycle_rule {
+    condition {
+      age            = 1
+      matches_prefix = ["release-plans/"]
+    }
+    action { type = "Delete" }
+  }
   lifecycle { prevent_destroy = true }
   depends_on = [google_project_service.storage]
 }
