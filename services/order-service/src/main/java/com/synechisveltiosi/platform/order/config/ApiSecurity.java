@@ -57,6 +57,7 @@ public class ApiSecurity {
                 .requestCache(RequestCacheConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/livez", "/readyz").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/orders/**").hasAuthority("SCOPE_orders:read")
                         .requestMatchers(HttpMethod.POST, "/api/v1/orders", "/api/v1/orders/**").hasAuthority("SCOPE_orders:write")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/orders/*/status").hasAuthority("SCOPE_orders:write")
