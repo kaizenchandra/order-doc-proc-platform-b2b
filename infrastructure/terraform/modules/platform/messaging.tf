@@ -64,7 +64,9 @@ resource "google_pubsub_subscription" "consumer" {
   topic                      = google_pubsub_topic.events[each.value.topic].id
   ack_deadline_seconds       = each.value.ack
   message_retention_duration = "604800s"
-  labels                     = local.labels
+  # A database restore can lose committed effects for messages already acknowledged.
+  retain_acked_messages = true
+  labels                = local.labels
   expiration_policy { ttl = "" }
   retry_policy {
     minimum_backoff = "10s"

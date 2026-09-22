@@ -210,3 +210,5 @@ whitespace checks passed. No live cloud plan, cloud apply, or cloud acceptance t
 Phase 14 narrows signing, object access, and push-token grants; see [the current IAM contract](security.md).
 
 Phase 15 adds operational metrics and thirteen alert policies. Supply existing verified `notification_channels`; an empty list creates console incidents only. See [operations](operations.md).
+
+Phase 17 explicitly retains acknowledged messages on all four source subscriptions for seven days; apply and verify this setting before relying on post-restore replay. See [recovery boundaries](production.md#recovery-boundaries-and-retention).

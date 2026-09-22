@@ -1,4 +1,4 @@
-# Phase 1 — Accepted architecture baseline
+# Architecture baseline and implementation status
 
 A B2B supplier accepts order documents, validates their bytes, calculates checksums, writes JSON metadata reports, and
 independently records audit/notification intent. OCR, malware scanning, and actual email/SMS delivery are outside the
@@ -22,7 +22,10 @@ flowchart LR
     Notify --> SQL
 ```
 
-## Decisions to preserve during implementation
+The Phase 1 decisions below remain the baseline. Phase 18 reconciles their implementation status; see the
+[architecture review](architecture-review.md) and [decision records](adr/README.md).
+
+## Decisions and current boundaries
 
 - Java 21, Boot 4.1.1, Spring Framework 7, Maven; one GCP region initially.
 - Regional GKE Autopilot hosts order API, polling outbox relay, and streaming result subscriber.
@@ -35,9 +38,10 @@ flowchart LR
   document `/complete` operations use `/api/v1`.
 - Registration creates AWAITING_UPLOAD. Direct signed GCS upload is followed by verification; `/complete` atomically
   writes QUEUED, exact object generation, and request outbox event. Initial size ceiling: 25 MiB.
-- Document state: AWAITING_UPLOAD -> QUEUED -> PROCESSED/FAILED; abandoned uploads expire. Authorized reprocessing uses
-  a new processingRequestId. No potentially stale PROCESSING state initially.
-- SQL mutation plus outbox row commit together. Relay claims short leases, publishes outside the SQL transaction, and
+- Document state: AWAITING_UPLOAD -> QUEUED -> PROCESSED/FAILED. Expired upload windows are rejected, but no job
+  automatically transitions abandoned registrations to EXPIRED. Reprocessing requires a new processingRequestId;
+  the domain transition exists, but an authorized application workflow is not implemented. No PROCESSING state is used.
+- SQL mutation plus outbox row commit together. Relay claims one event under a short lease, publishes outside the SQL transaction, and
   marks publication with a claim token. Duplicate publication reuses eventId.
 - The processor writes a create-only canonical GCS result keyed by processingRequestId, then publishes a stable result
   event reconstructed from stored metadata and the report object's generation before acknowledging. Concurrent workers
@@ -58,7 +62,7 @@ flowchart LR
 - Combined connection budget includes API replicas, notification maximum instances, pool sizes, rollouts, and admin
   headroom. Document workers consume zero SQL connections.
 - Production uses SQL HA/backups and regional app resilience; regional disaster recovery is additional work.
-- Trace context crosses events; logs exclude document bytes, secrets, and signed URLs. Monitor outbox age, backlog age,
+- Trace context crosses events and enriches logs; no span exporter is implemented. Logs exclude document bytes, secrets, and signed URLs. Monitor outbox age, backlog age,
   dead letters, processing latency, and pool wait time.
 - Local development uses PostgreSQL, Pub/Sub Emulator, and a GCS-specific fake. GCS is not AWS S3; emulators do not
   prove IAM, signed URL, failover, or real network behavior.

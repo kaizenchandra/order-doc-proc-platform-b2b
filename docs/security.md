@@ -111,3 +111,5 @@ No cloud configuration was applied. Live IAM tests, SQL privilege verification, 
 edge abuse controls, artifact/dependency scanning, and production monitoring remain explicit deployment/release checks.
 CI scan automation is Phase 16; operational alerts and resilience are Phase 15. Do not interpret this phase's local
 checks as proof that a production environment is secure.
+
+Phase 18 verified the probe contract: only `/livez` and `/readyz` expose anonymous status; Actuator routes are denied. Swagger/OpenAPI routes remain anonymous at the application layer and require a launch visibility review; see [AR-05](architecture-review.md#findings-and-disposition).

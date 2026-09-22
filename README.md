@@ -2,7 +2,7 @@
 
 Java 21 / Spring Boot 4.1.1 / Spring Framework 7, built incrementally as a production architecture exercise.
 
-**Current milestone: Phase 11 — GKE application release.** Order-service exposes authenticated order/document endpoints,
+**Current milestone: Phase 19 — Interview Preparation; all planned repository phases complete.** Order-service exposes authenticated order/document endpoints,
 a leased outbox relay, an idempotent result consumer, and signed upload/report authorization. Document-service adds
 authenticated push handling, PDF metadata processing, generation-pinned GCS reads, create-only canonical reports,
 and stable result publication. Notification-service consumes authenticated events and atomically records inbox, audit,
@@ -60,8 +60,8 @@ Run all test layers, including emulator workflow regressions, with `./scripts/lo
 ├── infrastructure/
 │   ├── terraform/
 │   │   ├── environments/{dev,staging,prod}/
-│   │   └── modules/{project-services,network,gke,cloud-run,cloud-sql,
-│   │               pubsub,storage,artifact-registry,iam,secret-manager}/
+│   │   ├── bootstrap/              # State bucket bootstrap
+│   │   └── modules/platform/       # Cohesive GCP platform module
 │   ├── kubernetes/                 # Prerequisites
 │   └── helm/order-service/         # Application release
 ├── scripts/                       # Local startup, issuer/bridge, and smoke check
@@ -69,13 +69,13 @@ Run all test layers, including emulator workflow regressions, with `./scripts/lo
 │   ├── architecture.md
 │   ├── repository.md
 │   ├── roadmap.md
-│   └── adr/                       # Formal ADRs in Phase 18
-└── .github/workflows/              # CI/CD in Phase 16
+│   └── adr/                       # Six reviewed architecture decisions
+└── .github/workflows/              # Verification, release, and reviewed deployment
 ```
 
 Dockerfiles, Compose, and explicit local storage profiles now support a complete local workflow.
 The order-service Helm chart adds GKE deployment, probes, autoscaling, and optional HTTPS ingress.
-Terraform resources, Cloud Run deployment, and CI workflows arrive in their designated phases.
+Terraform resources, Cloud Run deployment contracts, and CI/CD workflows are implemented; cloud setup remains explicit in their runbooks.
 
 ## Design and progress
 
@@ -104,3 +104,11 @@ Terraform provisioning and environment/state separation: [Phase 13 runbook](docs
 Security boundaries, least-privilege grants, and regression evidence: [Phase 14](docs/security.md).
 
 Operational telemetry, alert policies, and recovery procedures: [Phase 15](docs/operations.md).
+
+Verification, scanned releases, and reviewed deployment setup: [Phase 16](docs/cicd.md).
+
+Production workload, recovery drills, and launch acceptance: [Phase 17](docs/production.md).
+
+Architecture invariants, findings, and decisions: [Phase 18 review](docs/architecture-review.md) and [ADRs](docs/adr/README.md).
+
+Project walkthrough, technical questions, and code tour: [interview guide](docs/interview-preparation.md). Timed scenarios and scoring: [mock interview](docs/interview-practice.md).

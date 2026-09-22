@@ -1,18 +1,18 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: { { include "order.name" . } }
+  name: {{ include "order.name" . }}
   labels:
-    { { - include "order.labels" . | nindent 4 } }
-  { { - if .Values.ingress.enabled } }
+    {{- include "order.labels" . | nindent 4 }}
+  {{- if .Values.ingress.enabled }}
   annotations:
     cloud.google.com/neg: '{"ingress": true}'
-    cloud.google.com/backend-config: { { printf "{ \"default\":\"%s\" }" (include "order.name" .) | quote } }
-  { { - end } }
+    cloud.google.com/backend-config: {{ printf "{ \"default\":\"%s\" }" (include "order.name" .) | quote }}
+  {{- end }}
 spec:
   type: ClusterIP
   selector:
-    { { - include "order.selector" . | nindent 4 } }
+    {{- include "order.selector" . | nindent 4 }}
   ports:
     - name: http
       port: 80

@@ -143,7 +143,7 @@ create a fresh event ID, or invent a new processingRequestId to conceal a stuck 
    envelope and relevant attributes. Publishing the DLQ wrapper directly to an application topic is invalid.
 4. Replay the original event to its original topic with the same domain eventId, processingRequestId, and correlation
    metadata. Topic replay reaches every subscription; all affected consumers must retain compatible inbox/report state.
-   Do not seek or reset a production subscription as an ad hoc replay mechanism.
+   Do not seek or reset a production subscription as an ad hoc replay mechanism. A reviewed post-restore seek is a separate maintenance procedure in [production recovery](production.md).
 5. Verify canonical report/state and one notification effect per event. Acknowledge the retained inspection message only
    after successful resolution and record the authorized replay outcome. Stop on renewed failures; do not automate an
    unbounded DLQ-to-source loop.

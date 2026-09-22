@@ -1,20 +1,20 @@
-{ { - if .Values.networkPolicy.enabled } }
+{{- if .Values.networkPolicy.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: { { include "order.name" . } }
+  name: {{ include "order.name" . }}
   labels:
-    { { - include "order.labels" . | nindent 4 } }
+    {{- include "order.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      { { - include "order.selector" . | nindent 6 } }
+      {{- include "order.selector" . | nindent 6 }}
   policyTypes: [ Ingress, Egress ]
   ingress:
     - from:
-        { { - range .Values.networkPolicy.ingressCidrs } }
-        - ipBlock: { cidr: { { . | quote } } }
-        { { - end } }
+        {{- range .Values.networkPolicy.ingressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+        {{- end }}
       ports:
         - { protocol: TCP, port: 8080 }
   egress:
@@ -26,7 +26,7 @@ spec:
           podSelector:
             matchLabels:
               k8s-app: kube-dns
-        - ipBlock: { cidr: { { .Values.networkPolicy.nodeLocalDnsCidr | quote } } }
+        - ipBlock: { cidr: {{ .Values.networkPolicy.nodeLocalDnsCidr | quote }} }
       ports:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
@@ -38,9 +38,9 @@ spec:
         - { protocol: TCP, port: 8080 }
     # Cloud SQL Java connector uses 3307, not PostgreSQL's direct 5432 port.
     - to:
-        { { - range .Values.networkPolicy.sqlCidrs } }
-        - ipBlock: { cidr: { { . | quote } } }
-        { { - end } }
+        {{- range .Values.networkPolicy.sqlCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+        {{- end }}
       ports:
         - { protocol: TCP, port: 3307 }
     # Google APIs and the external identity provider. Standard NetworkPolicy cannot filter FQDNs.
@@ -48,4 +48,4 @@ spec:
         - ipBlock: { cidr: 0.0.0.0/0 }
       ports:
         - { protocol: TCP, port: 443 }
-  { { - end } }
+  {{- end }}

@@ -221,3 +221,15 @@ run "monitoring_contract" {
     error_message = "Do not introduce tenant/event/trace identifiers as metric labels."
   }
 }
+
+run "restore_replay_window" {
+  command = plan
+  assert {
+    condition     = alltrue([for s in google_pubsub_subscription.consumer : s.retain_acked_messages && s.message_retention_duration == "604800s"])
+    error_message = "All four consumers must retain acknowledged messages for post-restore replay."
+  }
+  assert {
+    condition     = alltrue([for b in google_storage_bucket.documents : b.versioning[0].enabled && length(b.lifecycle_rule) == 0])
+    error_message = "Input generations and canonical reports must survive the replay window; no automatic deletion is configured."
+  }
+}

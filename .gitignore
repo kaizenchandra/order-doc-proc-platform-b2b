@@ -59,3 +59,6 @@ gha-creds-*.json
 /scripts/ci/__pycache__/
 *.tfvars.json
 !*.example.tfvars.json
+
+# Production drill helper bytecode
+/scripts/production/__pycache__/

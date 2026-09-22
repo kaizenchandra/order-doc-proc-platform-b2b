@@ -24,6 +24,18 @@ jobs:
           cache: maven
       - name: Unit, integration, and local workflow regressions
         run: ./scripts/local/test.sh
+      - name: Bounded workflow and isolated logical restore drills
+        run: |
+          mkdir -p target/production
+          python3 scripts/production/load.py --local --count 6 --concurrency 2 > target/production/load.json
+          python3 scripts/production/restore_local.py > target/production/restore.json
+      - name: Production drill reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: production-drills
+          path: target/production/*.json
+          retention-days: 7
       - name: Test reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -65,5 +77,6 @@ jobs:
           target/ci-python/bin/pip install -r scripts/kubernetes/requirements.txt
           target/ci-python/bin/python scripts/kubernetes/test_chart.py
           target/ci-python/bin/python -m unittest discover -s scripts/ci -p 'test_*.py'
+          python3 -m unittest discover -s scripts/production -p 'test_*.py'
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
           "$(go env GOPATH)/bin/actionlint"

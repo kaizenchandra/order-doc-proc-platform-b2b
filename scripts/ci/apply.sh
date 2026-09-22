@@ -22,7 +22,13 @@ export KUBECONFIG="$DEPLOY_DIR/kubeconfig"
 export USE_GKE_GCLOUD_AUTH_PLUGIN=True
 gcloud container clusters get-credentials "$CLUSTER" --region "$REGION" --project "$GCP_PROJECT_ID" --internal-ip
 # Cluster namespace, migrations, and Kubernetes Secret are explicit platform prerequisites.
-kubectl --namespace order-platform get secret order-database -o name
+DATABASE_SECRET=$(python3 - <<'PY'
+import json
+from pathlib import Path
+print(json.loads(Path('target/deployment/helm-values.json').read_text())['database']['existingSecret'])
+PY
+)
+kubectl --namespace order-platform get secret "$DATABASE_SECRET" -o name
 helm upgrade --install orders infrastructure/helm/order-service --namespace order-platform \
   -f "$DEPLOY_DIR/platform-values.yaml" -f "$DEPLOY_DIR/helm-values.json" --atomic --wait --timeout 15m
 kubectl --namespace order-platform rollout status deployment/orders-order --timeout=5m

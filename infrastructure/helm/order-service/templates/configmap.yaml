@@ -1,25 +1,25 @@
-{ { - include "order.validate" . - } }
+{{- include "order.validate" . -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: { { include "order.name" . } }
+  name: {{ include "order.name" . }}
   labels:
-    { { - include "order.labels" . | nindent 4 } }
+    {{- include "order.labels" . | nindent 4 }}
 data:
   SPRING_PROFILES_ACTIVE: gke
-  DB_URL: { { printf "jdbc:postgresql:///%s?cloudSqlInstance=%s&socketFactory=com.google.cloud.sql.postgres.SocketFactory&ipTypes=PRIVATE" .Values.database.name .Values.database.instanceConnectionName | quote } }
-  DB_POOL_SIZE: { { .Values.database.poolSize | quote } }
+  DB_URL: {{ printf "jdbc:postgresql:///%s?cloudSqlInstance=%s&socketFactory=com.google.cloud.sql.postgres.SocketFactory&ipTypes=PRIVATE" .Values.database.name .Values.database.instanceConnectionName | quote }}
+  DB_POOL_SIZE: {{ .Values.database.poolSize | quote }}
   DB_MIGRATIONS_ENABLED: "false"
-  AUTH_ISSUER: { { .Values.app.authIssuer | quote } }
-  AUTH_JWK_SET_URI: { { .Values.app.authJwkSetUri | quote } }
-  AUTH_AUDIENCE: { { .Values.app.authAudience | quote } }
+  AUTH_ISSUER: {{ .Values.app.authIssuer | quote }}
+  AUTH_JWK_SET_URI: {{ .Values.app.authJwkSetUri | quote }}
+  AUTH_AUDIENCE: {{ .Values.app.authAudience | quote }}
   STORAGE_ENABLED: "true"
-  UPLOAD_BUCKET: { { .Values.app.uploadBucket | quote } }
-  REPORT_BUCKET: { { .Values.app.reportBucket | quote } }
-  GCS_SIGNING_SERVICE_ACCOUNT: { { .Values.app.signingServiceAccount | quote } }
+  UPLOAD_BUCKET: {{ .Values.app.uploadBucket | quote }}
+  REPORT_BUCKET: {{ .Values.app.reportBucket | quote }}
+  GCS_SIGNING_SERVICE_ACCOUNT: {{ .Values.app.signingServiceAccount | quote }}
   MESSAGING_ENABLED: "true"
-  PUBSUB_PROJECT_ID: { { .Values.app.projectId | quote } }
+  PUBSUB_PROJECT_ID: {{ .Values.app.projectId | quote }}
   PUBSUB_EMULATOR_HOST: ""
-  ORDER_EVENTS_TOPIC: { { .Values.app.orderEventsTopic | quote } }
-  DOCUMENT_REQUESTS_TOPIC: { { .Values.app.requestsTopic | quote } }
-  ORDER_RESULTS_SUBSCRIPTION: { { .Values.app.resultsSubscription | quote } }
+  ORDER_EVENTS_TOPIC: {{ .Values.app.orderEventsTopic | quote }}
+  DOCUMENT_REQUESTS_TOPIC: {{ .Values.app.requestsTopic | quote }}
+  ORDER_RESULTS_SUBSCRIPTION: {{ .Values.app.resultsSubscription | quote }}

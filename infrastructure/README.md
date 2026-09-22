@@ -18,3 +18,6 @@ Container digests are deployment inputs. Secrets and Terraform state are never c
 output; it does not remove values from state. Environment promotion must not copy secret values between environments.
 
 Cloud Run consumer images and reference deployment contracts are implemented; see the [Cloud Run runbook](../docs/cloud-run.md).
+
+Application CI/CD uses reviewed Terraform plans for Cloud Run and Helm for GKE. Foundation provisioning remains
+an operator responsibility; see [workflow setup, approval gates, and recovery](../docs/cicd.md).
